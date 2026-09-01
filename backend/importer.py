@@ -202,6 +202,10 @@ def import_pasien_data(df: pd.DataFrame, db: Session, batch_id: str):
                 return row[a]
         return None
 
+    # Preload existing patients into a dictionary for instant in-memory lookup
+    existing_pasien_dict = {p.pasien_id: p for p in db.query(Pasien).all()}
+    new_pasien_objects = []
+
     for _, row in df.iterrows():
         p_id_raw = get_first_val(row, col_map["pasien_id"])
         if not p_id_raw:
@@ -209,15 +213,16 @@ def import_pasien_data(df: pd.DataFrame, db: Session, batch_id: str):
         p_id = str(p_id_raw).strip()
         processed += 1
 
-        pasien = db.query(Pasien).filter(Pasien.pasien_id == p_id).first()
         is_new = False
-        if not pasien:
+        if p_id in existing_pasien_dict:
+            pasien = existing_pasien_dict[p_id]
+            updated += 1
+        else:
             is_new = True
             pasien = Pasien(pasien_id=p_id)
-            db.add(pasien)
+            existing_pasien_dict[p_id] = pasien
+            new_pasien_objects.append(pasien)
             inserted += 1
-        else:
-            updated += 1
 
         # Populate / Update fields
         no_rm = clean_val(get_first_val(row, col_map["no_rekam_medik"]))
@@ -299,6 +304,8 @@ def import_pasien_data(df: pd.DataFrame, db: Session, batch_id: str):
             if s_val:
                 setattr(pasien, str_fld, s_val)
 
+    if new_pasien_objects:
+        db.bulk_save_objects(new_pasien_objects)
     db.commit()
     return processed, inserted, updated
 
@@ -306,6 +313,11 @@ def import_kunjungan_data(df: pd.DataFrame, db: Session, batch_id: str):
     processed = 0
     inserted = 0
     updated = 0
+
+    # Preload existing patients in 1 query
+    existing_pasien_ids = set(r[0] for r in db.query(Pasien.pasien_id).all())
+    missing_pasien_map = {}
+    kunjungan_objects = []
 
     for _, row in df.iterrows():
         p_id_raw = row.get("Pasien ID") or row.get("ID Pasien")
@@ -318,11 +330,9 @@ def import_kunjungan_data(df: pd.DataFrame, db: Session, batch_id: str):
 
         processed += 1
 
-        # Pastikan pasien master ada di tabel pasien
-        pasien = db.query(Pasien).filter(Pasien.pasien_id == p_id).first()
-        if not pasien:
-            # Buat placeholder master pasien dari kolom kunjungan
-            pasien = Pasien(
+        # Check / Create placeholder master patient
+        if p_id not in existing_pasien_ids and p_id not in missing_pasien_map:
+            missing_pasien_map[p_id] = Pasien(
                 pasien_id=p_id,
                 no_rekam_medik=clean_val(row.get("No Rekam Medik")),
                 no_reg_nas=clean_val(row.get("No Reg Nas")),
@@ -335,78 +345,73 @@ def import_kunjungan_data(df: pd.DataFrame, db: Session, batch_id: str):
                 status_odhiv_pdp=clean_val(row.get("Status ODHIV dalam PDP")),
                 tanggal_mulai_art=parse_date_str(row.get("Tanggal Mulai ART")),
                 tanggal_konfirmasi_hiv=parse_date_str(row.get("Tanggal Konfirmasi HIV")),
-                tanggal_masuk_perawatan=parse_date_str(row.get("Tanggal Masuk Perawatan"))
+                tanggal_masuk_perawatan=parse_date_str(row.get("Tanggal Masuk Perawatan")),
+                kunjungan_terakhir=tgl_kunj
             )
-            db.add(pasien)
-            db.flush()
 
-        # Update kunjungan terakhir di master pasien jika lebih baru
-        if not pasien.kunjungan_terakhir or tgl_kunj > pasien.kunjungan_terakhir:
-            pasien.kunjungan_terakhir = tgl_kunj
-
-        # Cek apakah record kunjungan ini sudah ada (idempotent)
         alasan = clean_val(row.get("Alasan Kunjungan"))
-        existing_kunj = db.query(Kunjungan).filter(
-            Kunjungan.pasien_id == p_id,
-            Kunjungan.tanggal_kunjungan == tgl_kunj,
-            Kunjungan.alasan_kunjungan == alasan
-        ).first()
-
-        is_new = False
-        if not existing_kunj:
-            existing_kunj = Kunjungan(
-                pasien_id=p_id,
-                tanggal_kunjungan=tgl_kunj,
-                alasan_kunjungan=alasan
-            )
-            db.add(existing_kunj)
-            is_new = True
-            inserted += 1
-        else:
-            updated += 1
-
-        # Populate / Update kunjungan
-        existing_kunj.no_rekam_medik = clean_val(row.get("No Rekam Medik")) or existing_kunj.no_rekam_medik
-        existing_kunj.no_reg_nas = clean_val(row.get("No Reg Nas")) or existing_kunj.no_reg_nas
-        existing_kunj.nama_upk = clean_val(row.get("Nama UPK"))
-        existing_kunj.upk_asal = clean_val(row.get("UPK Asal"))
-        existing_kunj.jenis_layanan = clean_val(row.get("Jenis Layanan"))
-
         bb = parse_float(row.get("Berat Badan (kg)"))
         tb = parse_float(row.get("Tinggi Badan (cm)"))
-        existing_kunj.berat_badan = bb
-        existing_kunj.tinggi_badan = tb
-        
         imt, kat_imt = calculate_imt(bb, tb)
-        existing_kunj.imt = imt
-        existing_kunj.kategori_imt = kat_imt
-
-        existing_kunj.status_kawin = clean_val(row.get("Status Kawin"))
-        existing_kunj.status_hamil = clean_val(row.get("Status Hamil"))
-        existing_kunj.status_odhiv = clean_val(row.get("Status ODHIV"))
-        existing_kunj.status_odhiv_pdp = clean_val(row.get("Status ODHIV dalam PDP"))
-        existing_kunj.stadium_klinis = clean_val(row.get("Stadium Klinis"))
 
         rejimen = clean_val(row.get("Nama Rejimen"))
-        existing_kunj.nama_rejimen = rejimen
-        existing_kunj.kategori_rejimen = classify_regimen(rejimen)
-        existing_kunj.jumlah_hari_arv = parse_int(row.get("Jumlah hari ARV"))
+        kat_rejimen = classify_regimen(rejimen)
+        jml_arv = parse_int(row.get("Jumlah hari ARV"))
 
         akhir_fu = parse_date_str(row.get("Akhir Follow Up"))
         if not akhir_fu:
-            akhir_fu = calculate_fallback_afu(tgl_kunj, existing_kunj.jumlah_hari_arv)
-        existing_kunj.akhir_follow_up = akhir_fu
-        existing_kunj.tanggal_dirujuk = parse_date_str(row.get("Tanggal Dirujuk"))
-        existing_kunj.lembaga_pendamping = clean_val(row.get("Lembaga Pendamping"))
-        existing_kunj.batch_id = batch_id
+            akhir_fu = calculate_fallback_afu(tgl_kunj, jml_arv)
 
-    db.commit()
+        kunj = Kunjungan(
+            pasien_id=p_id,
+            no_rekam_medik=clean_val(row.get("No Rekam Medik")),
+            no_reg_nas=clean_val(row.get("No Reg Nas")),
+            tanggal_kunjungan=tgl_kunj,
+            nama_upk=clean_val(row.get("Nama UPK")),
+            upk_asal=clean_val(row.get("UPK Asal")),
+            alasan_kunjungan=alasan,
+            jenis_layanan=clean_val(row.get("Jenis Layanan")),
+            berat_badan=bb,
+            tinggi_badan=tb,
+            imt=imt,
+            kategori_imt=kat_imt,
+            status_kawin=clean_val(row.get("Status Kawin")),
+            status_hamil=clean_val(row.get("Status Hamil")),
+            status_odhiv=clean_val(row.get("Status ODHIV")),
+            status_odhiv_pdp=clean_val(row.get("Status ODHIV dalam PDP")),
+            stadium_klinis=clean_val(row.get("Stadium Klinis")),
+            nama_rejimen=rejimen,
+            kategori_rejimen=kat_rejimen,
+            jumlah_hari_arv=jml_arv,
+            akhir_follow_up=akhir_fu,
+            tanggal_dirujuk=parse_date_str(row.get("Tanggal Dirujuk")),
+            lembaga_pendamping=clean_val(row.get("Lembaga Pendamping")),
+            batch_id=batch_id
+        )
+        kunjungan_objects.append(kunj)
+        inserted += 1
+
+    # Save missing master patients first
+    if missing_pasien_map:
+        db.bulk_save_objects(list(missing_pasien_map.values()))
+        db.commit()
+
+    # Bulk save kunjungan in chunks of 2000
+    if kunjungan_objects:
+        for i in range(0, len(kunjungan_objects), 2000):
+            db.bulk_save_objects(kunjungan_objects[i:i+2000])
+            db.commit()
+
     return processed, inserted, updated
 
 def import_viral_load_data(df: pd.DataFrame, db: Session, batch_id: str):
     processed = 0
     inserted = 0
     updated = 0
+
+    existing_pasien_ids = set(r[0] for r in db.query(Pasien.pasien_id).all())
+    missing_pasien_map = {}
+    vl_objects = []
 
     for _, row in df.iterrows():
         p_id_raw = row.get("Pasien ID") or row.get("ID Pasien")
@@ -419,10 +424,8 @@ def import_viral_load_data(df: pd.DataFrame, db: Session, batch_id: str):
 
         processed += 1
 
-        # Pastikan master pasien ada
-        pasien = db.query(Pasien).filter(Pasien.pasien_id == p_id).first()
-        if not pasien:
-            pasien = Pasien(
+        if p_id not in existing_pasien_ids and p_id not in missing_pasien_map:
+            missing_pasien_map[p_id] = Pasien(
                 pasien_id=p_id,
                 no_rekam_medik=clean_val(row.get("No Rekam Medik")),
                 no_reg_nas=clean_val(row.get("No Reg Nas")),
@@ -431,44 +434,39 @@ def import_viral_load_data(df: pd.DataFrame, db: Session, batch_id: str):
                 jenis_kelamin=clean_val(row.get("Jenis Kelamin")),
                 tanggal_lahir=parse_date_str(row.get("Tanggal Lahir"))
             )
-            db.add(pasien)
-            db.flush()
-
-        no_order = clean_val(row.get("No Order"))
-        existing_vl = db.query(LabViralLoad).filter(
-            LabViralLoad.pasien_id == p_id,
-            LabViralLoad.tanggal_pemeriksaan == tgl_periksa,
-            LabViralLoad.no_order == no_order
-        ).first()
-
-        if not existing_vl:
-            existing_vl = LabViralLoad(
-                pasien_id=p_id,
-                tanggal_pemeriksaan=tgl_periksa,
-                no_order=no_order
-            )
-            db.add(existing_vl)
-            inserted += 1
-        else:
-            updated += 1
 
         hasil_raw = clean_val(row.get("Hasil"))
         num_val, kat_vl, is_supp, is_undet = classify_viral_load(hasil_raw)
 
-        existing_vl.upk_asal = clean_val(row.get("UPK Asal"))
-        existing_vl.hasil_raw = hasil_raw
-        existing_vl.hasil_numerik = num_val
-        existing_vl.kategori_vl = kat_vl
-        existing_vl.is_suppressed = is_supp
-        existing_vl.is_undetectable = is_undet
-        existing_vl.tanggal_hasil_keluar = parse_date_str(row.get("Tanggal Hasil Keluar"))
-        existing_vl.pemeriksa = clean_val(row.get("Pemeriksa"))
-        existing_vl.penanggung_jawab = clean_val(row.get("Penanggung Jawab"))
-        existing_vl.status_pemeriksaan = clean_val(row.get("Status Pemeriksaan"))
-        existing_vl.diulang = clean_val(row.get("Diulang"))
-        existing_vl.batch_id = batch_id
+        vl = LabViralLoad(
+            pasien_id=p_id,
+            no_order=clean_val(row.get("No Order")),
+            tanggal_pemeriksaan=tgl_periksa,
+            upk_asal=clean_val(row.get("UPK Asal")),
+            hasil_raw=hasil_raw,
+            hasil_numerik=num_val,
+            kategori_vl=kat_vl,
+            is_suppressed=is_supp,
+            is_undetectable=is_undet,
+            tanggal_hasil_keluar=parse_date_str(row.get("Tanggal Hasil Keluar")),
+            pemeriksa=clean_val(row.get("Pemeriksa")),
+            penanggung_jawab=clean_val(row.get("Penanggung Jawab")),
+            status_pemeriksaan=clean_val(row.get("Status Pemeriksaan")),
+            diulang=clean_val(row.get("Diulang")),
+            batch_id=batch_id
+        )
+        vl_objects.append(vl)
+        inserted += 1
 
-    db.commit()
+    if missing_pasien_map:
+        db.bulk_save_objects(list(missing_pasien_map.values()))
+        db.commit()
+
+    if vl_objects:
+        for i in range(0, len(vl_objects), 2000):
+            db.bulk_save_objects(vl_objects[i:i+2000])
+            db.commit()
+
     return processed, inserted, updated
 
 def import_cd4_data(df: pd.DataFrame, db: Session, batch_id: str):
@@ -484,6 +482,10 @@ def import_cd4_data(df: pd.DataFrame, db: Session, batch_id: str):
     if not col_id or not col_val:
         raise ValueError("Kolom Pasien ID dan Nilai CD4 tidak ditemukan.")
 
+    existing_pasien_ids = set(r[0] for r in db.query(Pasien.pasien_id).all())
+    missing_pasien_map = {}
+    cd4_objects = []
+
     for _, row in df.iterrows():
         p_id_raw = row.get(col_id)
         if pd.isna(p_id_raw):
@@ -492,41 +494,36 @@ def import_cd4_data(df: pd.DataFrame, db: Session, batch_id: str):
         tgl = parse_date_str(row.get(col_tgl)) if col_tgl else datetime.date.today().strftime("%Y-%m-%d")
 
         processed += 1
-        pasien = db.query(Pasien).filter(Pasien.pasien_id == p_id).first()
-        if not pasien:
-            pasien = Pasien(pasien_id=p_id)
-            if col_rm:
-                pasien.no_rekam_medik = clean_val(row.get(col_rm))
-            db.add(pasien)
-            db.flush()
+        if p_id not in existing_pasien_ids and p_id not in missing_pasien_map:
+            missing_pasien_map[p_id] = Pasien(
+                pasien_id=p_id,
+                no_rekam_medik=clean_val(row.get(col_rm)) if col_rm else None
+            )
 
         num_cd4, kat_cd4 = classify_cd4(row.get(col_val))
         if num_cd4 is None:
             continue
 
-        existing = db.query(LabCD4).filter(
-            LabCD4.pasien_id == p_id,
-            LabCD4.tanggal_pemeriksaan == tgl
-        ).first()
+        cd4 = LabCD4(
+            pasien_id=p_id,
+            no_rekam_medik=clean_val(row.get(col_rm)) if col_rm else None,
+            tanggal_pemeriksaan=tgl,
+            nilai_cd4=num_cd4,
+            kategori_cd4=kat_cd4,
+            batch_id=batch_id
+        )
+        cd4_objects.append(cd4)
+        inserted += 1
 
-        if not existing:
-            existing = LabCD4(
-                pasien_id=p_id,
-                tanggal_pemeriksaan=tgl,
-                nilai_cd4=num_cd4
-            )
-            db.add(existing)
-            inserted += 1
-        else:
-            existing.nilai_cd4 = num_cd4
-            updated += 1
+    if missing_pasien_map:
+        db.bulk_save_objects(list(missing_pasien_map.values()))
+        db.commit()
 
-        existing.kategori_cd4 = kat_cd4
-        if col_rm:
-            existing.no_rekam_medik = clean_val(row.get(col_rm))
-        existing.batch_id = batch_id
+    if cd4_objects:
+        for i in range(0, len(cd4_objects), 2000):
+            db.bulk_save_objects(cd4_objects[i:i+2000])
+            db.commit()
 
-    db.commit()
     return processed, inserted, updated
 
 def import_simrs_resep_data(df: pd.DataFrame, db: Session, batch_id: str, filename: str = "kunjunganfarmasi.xlsx"):

@@ -3259,7 +3259,16 @@
           method: 'POST',
           body: formData
         });
-        const json = await res.json();
+        
+        const rawText = await res.text();
+        let json;
+        try {
+          json = JSON.parse(rawText);
+        } catch (e) {
+          hud.classList.add('hidden');
+          alert(`Gagal memproses berkas (Status ${res.status}): ${rawText.slice(0, 300)}`);
+          return;
+        }
 
         updateHud(4, 100, "Selesai! Memperbarui visualisasi...");
         await new Promise(r => setTimeout(r, 600));
