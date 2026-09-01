@@ -112,24 +112,32 @@ def detect_file_type(df, filename: str = ""):
     fn_lower = filename.lower() if filename else ""
     cols_joined = " ".join([str(c).lower() for c in df.columns])
     
-    # 1. Check filename patterns (e.g. kunjunganfarmasi_agustus, resep_simrs, simrs_arv)
+    # 1. Filename-based explicit keywords
     if any(k in fn_lower for k in ["kunjunganfarmasi", "kunjungan_farmasi", "farmasi", "simrs", "resep_arv"]):
         return "SIMRS_ARV"
+    if any(k in fn_lower for k in ["data pasien", "data_pasien", "datapasien"]):
+        return "PASIEN"
+    if any(k in fn_lower for k in ["kunjungan pasien", "kunjungan_pasien"]):
+        return "KUNJUNGAN"
+    if any(k in fn_lower for k in ["viral load", "viral_load", "pemeriksaan viral load"]):
+        return "VIRAL_LOAD"
+    if any(k in fn_lower for k in ["cd4"]):
+        return "CD4"
 
     # 2. Check column patterns for SIMRS / Kunjungan Farmasi
     if any(k in cols_joined for k in ["item_code_desc", "outlet_name", "bill_number", "bill_date", "nama_dokter"]) or \
        ("qty" in cols_joined and any(k in cols_joined for k in ["obat", "desc", "resep", "mr_no", "no_rm", "depo"])):
         return "SIMRS_ARV"
         
-    # 3. Check SIHA standard entity formats
-    if "alasan kunjungan" in cols_joined or "nama rejimen" in cols_joined or ("kunjungan" in cols_joined and "pasien id" in cols_joined):
-        return "KUNJUNGAN"
-    elif "viral load" in cols_joined or "no order" in cols_joined or ("hasil" in cols_joined and "pemeriksa" in cols_joined):
+    # 3. Check SIHA standard entity formats by specific unique column combinations
+    if "tanggal pemeriksaan" in cols_joined or "viral load" in cols_joined or "no order" in cols_joined or ("hasil" in cols_joined and "pemeriksa" in cols_joined):
         return "VIRAL_LOAD"
-    elif "cd4" in cols_joined or "nilai cd4" in cols_joined or "hasil cd4" in cols_joined:
+    elif "nilai cd4" in cols_joined or "hasil cd4" in cols_joined:
         return "CD4"
-    elif "tanggal register" in cols_joined or "status odhiv" in cols_joined or "domisili" in cols_joined or ("pasien id" in cols_joined and "nik" in cols_joined):
+    elif "tanggal register" in cols_joined or "status nik" in cols_joined or "domisili" in cols_joined or "kunjungan terakhir" in cols_joined or ("pasien id" in cols_joined and "nik" in cols_joined):
         return "PASIEN"
+    elif "tanggal kunjungan" in cols_joined or "alasan kunjungan" in cols_joined or "nama rejimen" in cols_joined or "jumlah hari arv" in cols_joined:
+        return "KUNJUNGAN"
     elif "kunjungan" in cols_joined:
         return "KUNJUNGAN"
         
