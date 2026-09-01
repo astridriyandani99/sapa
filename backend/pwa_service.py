@@ -246,29 +246,156 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
             "message": "Tidak ada resep ARV aktif. Pasien tercatat sebagai riwayat skrining/tes."
         }
 
-    # 5. Latest Viral Load & CD4
+    # 5. Kunjungan Terakhir Pasien
+    kunjungan_terakhir_data = {
+        "has_record": False,
+        "tanggal": "-",
+        "tanggal_display": "-",
+        "alasan": "-",
+        "rejimen": "-",
+        "stadium": "-",
+        "jumlah_hari_arv": None,
+        "keterangan": "Belum ada catatan kunjungan"
+    }
+
+    if patient and patient.kunjungan_list:
+        valid_k = [k for k in patient.kunjungan_list if k.tanggal_kunjungan]
+        if valid_k:
+            latest_k = sorted(valid_k, key=lambda x: x.tanggal_kunjungan, reverse=True)[0]
+            try:
+                k_d = datetime.strptime(normalize_date_str(latest_k.tanggal_kunjungan), "%Y-%m-%d").date()
+                k_disp = k_d.strftime("%d %B %Y")
+            except Exception:
+                k_disp = latest_k.tanggal_kunjungan
+
+            kunjungan_terakhir_data = {
+                "has_record": True,
+                "tanggal": latest_k.tanggal_kunjungan,
+                "tanggal_display": k_disp,
+                "alasan": latest_k.alasan_kunjungan or "Kunjungan Rutin Pelayanan PDP",
+                "rejimen": latest_k.nama_rejimen or "-",
+                "stadium": latest_k.stadium_klinis or "-",
+                "jumlah_hari_arv": latest_k.jumlah_hari_arv,
+                "keterangan": f"Kunjungan terakhir pada {k_disp} ({latest_k.alasan_kunjungan or 'Pelayanan PDP'})"
+            }
+
+    # 6. Latest Viral Load, Next Evaluation Due Date, and CD4
     latest_vl = None
+    next_vl_due = {
+        "has_due_date": False,
+        "due_date": None,
+        "due_date_display": "-",
+        "days_remaining": None,
+        "status": "NOT_REQUIRED", # "ON_TRACK", "NEAR_DUE", "OVERDUE", "NOT_REQUIRED"
+        "status_label": "Tidak Diperlukan (Bukan Pasien Terapi)",
+        "recommendation": "Pemeriksaan Viral Load diperuntukkan bagi pasien dalam pengobatan ARV aktif."
+    }
     latest_cd4 = None
+
     if patient:
         vl_rec = db.query(LabViralLoad).filter(LabViralLoad.pasien_id == patient.pasien_id).order_by(desc(LabViralLoad.tanggal_pemeriksaan)).first()
         if vl_rec:
             is_undet = vl_rec.is_undetectable or "undetectable" in str(vl_rec.kategori_vl).lower() or "tnd" in str(vl_rec.kategori_vl).lower()
+            vl_date_raw = vl_rec.tanggal_pemeriksaan
+            vl_disp = vl_date_raw
+            try:
+                if vl_date_raw:
+                    v_d = datetime.strptime(normalize_date_str(vl_date_raw), "%Y-%m-%d").date()
+                    vl_disp = v_d.strftime("%d %B %Y")
+            except Exception:
+                pass
+
             latest_vl = {
                 "has_record": True,
                 "hasil": vl_rec.hasil_numerik or "<50",
                 "kategori": "Undetectable (<50 kopi/mL)" if is_undet else (vl_rec.kategori_vl or "Tersupresi"),
                 "is_undetectable": is_undet,
-                "tanggal": vl_rec.tanggal_pemeriksaan,
+                "tanggal": vl_date_raw,
+                "tanggal_display": vl_disp,
                 "u_equals_u": is_undet
             }
+
+            # Calculate Next VL Check Due Date
+            if has_active_art and vl_date_raw:
+                try:
+                    v_date = datetime.strptime(normalize_date_str(vl_date_raw), "%Y-%m-%d").date()
+                    # Interval: 12 months for suppressed / undetectable, 6 months for unsuppressed
+                    interval_days = 365 if (is_undet or "tersupresi" in str(vl_rec.kategori_vl).lower()) else 180
+                    target_date = v_date + timedelta(days=interval_days)
+                    days_diff = (target_date - date.today()).days
+
+                    if days_diff < 0:
+                        status = "OVERDUE"
+                        status_label = f"Jatuh Tempo (+{abs(days_diff)} hari)"
+                        rec = "Jadwal evaluasi rutin tahunan Anda telah jatuh tempo. Segera konsultasikan ke dokter untuk pemeriksaan Viral Load ulang."
+                    elif days_diff <= 30:
+                        status = "NEAR_DUE"
+                        status_label = f"{days_diff} hari lagi"
+                        rec = f"Jadwal evaluasi Viral Load Anda kurang dari {days_diff} hari lagi. Siapkan permohonan lab pada kunjungan kontrol berikutnya."
+                    else:
+                        months_left = max(1, round(days_diff / 30))
+                        status = "ON_TRACK"
+                        status_label = f"{months_left} bulan lagi"
+                        rec = "Kadar virus Anda terkontrol dengan baik. Evaluasi rutin berikutnya dijadwalkan tahun depan."
+
+                    next_vl_due = {
+                        "has_due_date": True,
+                        "due_date": target_date.isoformat(),
+                        "due_date_display": target_date.strftime("%d %B %Y"),
+                        "days_remaining": days_diff,
+                        "status": status,
+                        "status_label": status_label,
+                        "recommendation": rec
+                    }
+                except Exception:
+                    pass
+        elif has_active_art and patient.tanggal_mulai_art:
+            # Belum pernah tes VL, tapi sudah mulai ART
+            try:
+                art_start = datetime.strptime(normalize_date_str(patient.tanggal_mulai_art), "%Y-%m-%d").date()
+                target_date = art_start + timedelta(days=180) # 6 months
+                days_diff = (target_date - date.today()).days
+                if days_diff < 0:
+                    status = "OVERDUE"
+                    status_label = "Jatuh Tempo (Bulan ke-6 Terapi)"
+                    rec = "Anda sudah menjalani pengobatan lebih dari 6 bulan. Segera minta pengantar tes Viral Load evaluasi pertama."
+                else:
+                    months_left = max(1, round(days_diff / 30))
+                    status = "ON_TRACK"
+                    status_label = f"{months_left} bulan lagi (Evaluasi 6 Bulan)"
+                    rec = "Pemeriksaan Viral Load pertama akan dilakukan pada bulan ke-6 terapi ARV untuk melihat respons obat."
+                
+                next_vl_due = {
+                    "has_due_date": True,
+                    "due_date": target_date.isoformat(),
+                    "due_date_display": target_date.strftime("%d %B %Y"),
+                    "days_remaining": days_diff,
+                    "status": status,
+                    "status_label": status_label,
+                    "recommendation": rec
+                }
+            except Exception:
+                pass
         
         cd4_rec = db.query(LabCD4).filter(LabCD4.pasien_id == patient.pasien_id).order_by(desc(LabCD4.tanggal_pemeriksaan)).first()
         if cd4_rec:
+            cd4_date_raw = cd4_rec.tanggal_pemeriksaan
+            cd4_disp = cd4_date_raw
+            try:
+                if cd4_date_raw:
+                    c_d = datetime.strptime(normalize_date_str(cd4_date_raw), "%Y-%m-%d").date()
+                    cd4_disp = c_d.strftime("%d %B %Y")
+            except Exception:
+                pass
+
             latest_cd4 = {
                 "has_record": True,
                 "nilai": cd4_rec.nilai_cd4,
                 "kategori": cd4_rec.kategori_cd4 or "Baik",
-                "tanggal": cd4_rec.tanggal_pemeriksaan
+                "tanggal": cd4_date_raw,
+                "tanggal_display": cd4_disp,
+                "is_optional": True,
+                "note": "Pemeriksaan CD4 bersifat opsional (sesuai indikasi klinis dokter)"
             }
 
     if not latest_vl:
@@ -278,17 +405,21 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
             "kategori": "Belum ada riwayat pemeriksaan Viral Load",
             "is_undetectable": False,
             "tanggal": "-",
+            "tanggal_display": "-",
             "u_equals_u": False
         }
     if not latest_cd4:
         latest_cd4 = {
             "has_record": False,
             "nilai": "-",
-            "kategori": "Belum ada riwayat pemeriksaan CD4",
-            "tanggal": "-"
+            "kategori": "Opsional / Belum Diperiksa",
+            "tanggal": "-",
+            "tanggal_display": "-",
+            "is_optional": True,
+            "note": "Pemeriksaan CD4 bersifat opsional (dianjurkan pada awal inisiasi / bila ada gejala infeksi)"
         }
 
-    # 6. Past 30 Days Adherence Timeline & Progress Score
+    # 7. Past 30 Days Adherence Timeline & Progress Score
     logs_30d = db.query(PatientAdherenceLog).filter(
         PatientAdherenceLog.no_rekam_medik == clean_rm,
         PatientAdherenceLog.target_date >= (date.today() - timedelta(days=30)).isoformat()
@@ -361,7 +492,9 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
         "timeline_30d": timeline_30d,
         "badges": badges,
         "virtual_pillbox": virtual_pillbox,
+        "kunjungan_terakhir": kunjungan_terakhir_data,
         "viral_load": latest_vl,
+        "next_vl_due": next_vl_due,
         "cd4": latest_cd4
     }
 
@@ -690,19 +823,69 @@ def get_admin_pre_ltfu_radar(db: Session, filter_rujukan: str = "aktif_kariadi")
             if remaining > 3 and not is_rujuk_keluar:
                 continue
 
-        # Regimen
+        # Regimen & Visit Info
         rej_name = "TLD"
+        tgl_kunj_terakhir = "-"
+        alasan_kunj_terakhir = "-"
         if p.kunjungan_list:
             valid_k = [k for k in p.kunjungan_list if k.tanggal_kunjungan]
             if valid_k:
                 latest_k = sorted(valid_k, key=lambda x: x.tanggal_kunjungan, reverse=True)
                 if latest_k and latest_k[0].nama_rejimen:
                     rej_name = latest_k[0].nama_rejimen
+                if latest_k and latest_k[0].tanggal_kunjungan:
+                    tgl_kunj_terakhir = latest_k[0].tanggal_kunjungan
+                    alasan_kunj_terakhir = latest_k[0].alasan_kunjungan or "Pelayanan PDP"
+
+        # Viral Load & Next Due
+        vl_rec = db.query(LabViralLoad).filter(LabViralLoad.pasien_id == p.pasien_id).order_by(desc(LabViralLoad.tanggal_pemeriksaan)).first() if p.pasien_id else None
+        hasil_vl_str = "-"
+        tgl_vl_str = "-"
+        jadwal_next_vl_str = "-"
+        if vl_rec:
+            is_undet = vl_rec.is_undetectable or "undetectable" in str(vl_rec.kategori_vl).lower() or "tnd" in str(vl_rec.kategori_vl).lower()
+            hasil_vl_str = "Undetectable (<50)" if is_undet else (str(vl_rec.hasil_numerik or vl_rec.kategori_vl or "-"))
+            tgl_vl_str = vl_rec.tanggal_pemeriksaan or "-"
+            if vl_rec.tanggal_pemeriksaan:
+                try:
+                    v_date = datetime.strptime(normalize_date_str(vl_rec.tanggal_pemeriksaan), "%Y-%m-%d").date()
+                    interval_days = 365 if (is_undet or "tersupresi" in str(vl_rec.kategori_vl).lower()) else 180
+                    target_date = v_date + timedelta(days=interval_days)
+                    diff = (target_date - today).days
+                    if diff < 0:
+                        jadwal_next_vl_str = f"{target_date.strftime('%d/%m/%Y')} (Jatuh Tempo)"
+                    else:
+                        jadwal_next_vl_str = f"{target_date.strftime('%d/%m/%Y')} ({max(1, round(diff/30))} bln lg)"
+                except Exception:
+                    pass
+        elif p.tanggal_mulai_art:
+            try:
+                art_start = datetime.strptime(normalize_date_str(p.tanggal_mulai_art), "%Y-%m-%d").date()
+                target_date = art_start + timedelta(days=180)
+                diff = (target_date - today).days
+                if diff < 0:
+                    jadwal_next_vl_str = f"{target_date.strftime('%d/%m/%Y')} (Jatuh Tempo 6 Bln)"
+                else:
+                    jadwal_next_vl_str = f"{target_date.strftime('%d/%m/%Y')} (Bulan ke-6)"
+            except Exception:
+                pass
+
+        # CD4 (Opsional)
+        cd4_rec = db.query(LabCD4).filter(LabCD4.pasien_id == p.pasien_id).order_by(desc(LabCD4.tanggal_pemeriksaan)).first() if p.pasien_id else None
+        hasil_cd4_str = f"{cd4_rec.nilai_cd4} sel/mm³" if (cd4_rec and cd4_rec.nilai_cd4) else "Opsional / -"
+        tgl_cd4_str = cd4_rec.tanggal_pemeriksaan if (cd4_rec and cd4_rec.tanggal_pemeriksaan) else "-"
 
         radar_list.append({
             "no_rekam_medik": p.no_rekam_medik,
             "nama_pasien": mask_patient_name(p.nama_pasien),
             "rejimen": rej_name,
+            "tgl_kunjungan_terakhir": tgl_kunj_terakhir,
+            "alasan_kunjungan": alasan_kunj_terakhir,
+            "hasil_vl": hasil_vl_str,
+            "tgl_vl": tgl_vl_str,
+            "jadwal_next_vl": jadwal_next_vl_str,
+            "nilai_cd4": hasil_cd4_str,
+            "tgl_cd4": tgl_cd4_str,
             "status_rujukan": status_rujukan_label,
             "rujuk_category": rujuk_category,
             "rujuk_badge_color": rujuk_badge_color,

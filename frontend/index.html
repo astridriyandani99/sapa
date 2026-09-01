@@ -1647,21 +1647,24 @@
 
           <div class="overflow-x-auto rounded-xl border border-slate-200">
             <table class="w-full text-left text-xs text-slate-600">
-              <thead class="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+              <thead class="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px] uppercase tracking-wider">
                 <tr>
                   <th class="px-4 py-3">No. Rekam Medik</th>
                   <th class="px-4 py-3">Nama Pasien (Masking)</th>
                   <th class="px-4 py-3">Rejimen ARV</th>
-                  <th class="px-4 py-3">Status Rujukan (Asal / Tujuan UPK)</th>
-                  <th class="px-4 py-3">Faktur Resep Terakhir</th>
-                  <th class="px-4 py-3 text-center">Estimasi Sisa Obat</th>
-                  <th class="px-4 py-3 text-center">Status Radar & Mitigasi</th>
+                  <th class="px-4 py-3">Kunjungan Terakhir</th>
+                  <th class="px-4 py-3">Hasil Lab VL & Tgl</th>
+                  <th class="px-4 py-3">Jadwal Cek VL Berikutnya</th>
+                  <th class="px-4 py-3">CD4 (Opsional)</th>
+                  <th class="px-4 py-3">Status Rujukan</th>
+                  <th class="px-4 py-3 text-center">Sisa Obat</th>
+                  <th class="px-4 py-3 text-center">Status Radar</th>
                   <th class="px-4 py-3 text-center">Aksi Petugas</th>
                 </tr>
               </thead>
               <tbody id="pwa-radar-table-body" class="divide-y divide-slate-100">
                 <tr>
-                  <td colspan="8" class="px-5 py-6 text-center text-slate-400">Memuat data radar Pre-LTFU...</td>
+                  <td colspan="11" class="px-5 py-6 text-center text-slate-400">Memuat data radar Pre-LTFU...</td>
                 </tr>
               </tbody>
             </table>
@@ -2210,14 +2213,14 @@
       const tbody = document.getElementById('pwa-radar-table-body');
       if (!tbody) return;
       if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="px-5 py-6 text-center text-slate-400">Tidak ada pasien dalam kategori filter ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="px-5 py-6 text-center text-slate-400">Tidak ada pasien dalam kategori filter ini.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = '';
       list.forEach(p => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50 transition';
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100 text-slate-700';
         
         let badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
         if (p.urgency === 'HIGH') badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
@@ -2225,28 +2228,51 @@
         else if (p.urgency === 'DECEASED') badgeColor = 'bg-slate-200 text-slate-800 border-slate-300';
         
         const actionBtn = p.is_rujuk_keluar 
-          ? `<button onclick="showToast('Pasien Rujuk Keluar', '${p.nama_pasien} telah resmi dirujuk keluar ke ${p.rujuk_keluar_ke} pada ${p.tgl_rujuk_keluar}', '✈️')" class="px-3 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[11px] border border-purple-200 transition">
-               ✈️ Detail Rujukan
+          ? `<button onclick="showToast('Pasien Rujuk Keluar', '${p.nama_pasien} telah resmi dirujuk keluar ke ${p.rujuk_keluar_ke} pada ${p.tgl_rujuk_keluar}', '✈️')" class="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[11px] border border-purple-200 transition">
+               ✈️ Detail
              </button>`
-          : `<button onclick="showToast('Kontak Pasien', 'Membuka data kontak & catatan konseling untuk ${p.no_rekam_medik}', '📞')" class="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition">
-               📞 Hubungi Pasien
+          : `<button onclick="showToast('Kontak Pasien', 'Membuka data kontak & catatan konseling untuk ${p.no_rekam_medik}', '📞')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition">
+               📞 Kontak
              </button>`;
 
+        // VL Styling
+        const vlDisplay = p.hasil_vl && p.hasil_vl !== '-'
+          ? `<div><span class="font-bold ${p.hasil_vl.includes('Undetectable') ? 'text-emerald-700' : 'text-slate-900'}">${p.hasil_vl}</span><div class="text-[10px] text-slate-400 font-mono">${p.tgl_vl || '-'}</div></div>`
+          : `<span class="text-slate-400">Belum Tes</span>`;
+
+        // CD4 Display
+        const cd4Display = p.nilai_cd4 && !p.nilai_cd4.includes('Opsional / -')
+          ? `<div><span class="font-bold text-cyan-700">${p.nilai_cd4}</span><div class="text-[10px] text-slate-400 font-mono">${p.tgl_cd4 || '-'}</div></div>`
+          : `<span class="text-slate-400 text-[10px]">Opsional</span>`;
+
+        // Next VL Due Display
+        const nextVlDisplay = p.jadwal_next_vl && p.jadwal_next_vl !== '-'
+          ? `<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] ${p.jadwal_next_vl.includes('Jatuh Tempo') ? 'bg-rose-100 text-rose-800' : 'bg-blue-50 text-blue-800'}">${p.jadwal_next_vl}</span>`
+          : `<span class="text-slate-400">-</span>`;
+
+        // Kunjungan Terakhir
+        const kunjDisplay = p.tgl_kunjungan_terakhir && p.tgl_kunjungan_terakhir !== '-'
+          ? `<div><span class="font-mono font-medium text-slate-800 text-[11px]">${p.tgl_kunjungan_terakhir}</span><div class="text-[10px] text-slate-400 truncate max-w-[120px]">${p.alasan_kunjungan || ''}</div></div>`
+          : `<span class="text-slate-400">-</span>`;
+
         tr.innerHTML = `
-          <td class="px-4 py-3 font-semibold text-slate-900">${p.no_rekam_medik}</td>
+          <td class="px-4 py-3 font-mono font-bold text-brand-700">${p.no_rekam_medik}</td>
           <td class="px-4 py-3 font-medium text-slate-800">${p.nama_pasien}</td>
-          <td class="px-4 py-3 text-slate-700">${p.rejimen}</td>
+          <td class="px-4 py-3 text-slate-700 text-xs">${p.rejimen}</td>
+          <td class="px-4 py-3">${kunjDisplay}</td>
+          <td class="px-4 py-3 text-xs">${vlDisplay}</td>
+          <td class="px-4 py-3 text-xs">${nextVlDisplay}</td>
+          <td class="px-4 py-3 text-xs">${cd4Display}</td>
           <td class="px-4 py-3">
-            <span class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${p.rujuk_badge_color} inline-block">
+            <span class="px-2 py-0.5 rounded-lg text-[10px] font-semibold border ${p.rujuk_badge_color} inline-block">
               ${p.status_rujukan}
             </span>
           </td>
-          <td class="px-4 py-3 text-slate-500 font-mono text-[11px]">${p.tgl_resep_terakhir}</td>
           <td class="px-4 py-3 text-center font-bold text-slate-900">
             ${p.is_rujuk_keluar 
               ? `<span class="text-purple-600 font-medium text-xs">Pindah Perawatan</span>` 
               : (p.sisa_obat_hari > 0 
-                  ? `<span class="text-amber-600">${p.sisa_obat_hari} hari lagi</span>` 
+                  ? `<span class="text-amber-600">${p.sisa_obat_hari} hr</span>` 
                   : `<span class="text-rose-600 font-extrabold">Habis (+${p.hari_terlambat} hr)</span>`)}
           </td>
           <td class="px-4 py-3 text-center">

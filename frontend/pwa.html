@@ -284,17 +284,41 @@
       <!-- TAB 2: HASIL KESEHATANKU (LAB & U=U TRACKER) -->
       <div id="pwa-tab-health" class="p-5 space-y-4 flex-1 hidden">
         <div>
-          <h3 class="text-base font-bold text-slate-900 dark:text-white">Hasil Laboratorium & Imunitas</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Bukti riwayat pemeriksaan medis Anda di RSUP Dr. Kariadi</p>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white">Hasil Laboratorium & Jadwal Kontrol</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Bukti riwayat pemeriksaan medis, evaluasi Viral Load & CD4 di RSUP Dr. Kariadi</p>
+        </div>
+
+        <!-- Kunjungan Terakhir Pasien Card -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl space-y-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 flex items-center gap-1">
+              <span>🩺</span> <span>KUNJUNGAN TERAKHIR</span>
+            </span>
+            <span id="kunj-last-date" class="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">-</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <div class="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              <span class="text-[10px] text-slate-400 block">Layanan / Alasan</span>
+              <span id="kunj-last-alasan" class="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate mt-0.5">-</span>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              <span class="text-[10px] text-slate-400 block">Rejimen Pengobatan</span>
+              <span id="kunj-last-rejimen" class="text-xs font-bold text-brand-600 dark:text-brand-400 block truncate mt-0.5">-</span>
+            </div>
+          </div>
         </div>
 
         <!-- Viral Load Card -->
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-3.5 shadow-xs">
           <div class="flex items-center justify-between">
-            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
-              VIRAL LOAD TERAKHIR
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1">
+              <span>🔬</span> <span>VIRAL LOAD TERAKHIR</span>
             </span>
-            <span id="vl-lab-date" class="text-[10px] text-slate-400 font-mono">-</span>
+            <div class="text-right">
+              <span class="text-[9px] text-slate-400 block">Tanggal Tes:</span>
+              <span id="vl-lab-date" class="text-[10px] text-slate-600 dark:text-slate-300 font-mono font-bold">-</span>
+            </div>
           </div>
 
           <div class="text-center py-2">
@@ -313,13 +337,43 @@
           </div>
         </div>
 
-        <!-- CD4 / Imunitas Card -->
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-3 shadow-xs">
+        <!-- Jadwal Cek Viral Load Berikutnya Card -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl space-y-3 shadow-xs">
           <div class="flex items-center justify-between">
-            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/60">
-              JUMLAH SEL CD4
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
+              <span>📅</span> <span>JADWAL CEK VL BERIKUTNYA</span>
             </span>
-            <span id="cd4-lab-date" class="text-[10px] text-slate-400 font-mono">-</span>
+            <span id="vl-next-status-badge" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              Evaluasi Rutin
+            </span>
+          </div>
+
+          <div class="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Target Tanggal Evaluasi:</span>
+              <span id="vl-next-due-date" class="text-sm font-bold text-slate-900 dark:text-white font-mono">-</span>
+            </div>
+            <p id="vl-next-rec-text" class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
+              Pemeriksaan evaluasi berkala untuk memantau supresi virus.
+            </p>
+          </div>
+        </div>
+
+        <!-- CD4 / Imunitas Card (Opsional) -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl space-y-3 shadow-xs">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/60 flex items-center gap-1">
+                <span>🛡️</span> <span>JUMLAH SEL CD4</span>
+              </span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                Opsional
+              </span>
+            </div>
+            <div class="text-right">
+              <span class="text-[9px] text-slate-400 block">Tanggal Tes:</span>
+              <span id="cd4-lab-date" class="text-[10px] text-slate-600 dark:text-slate-300 font-mono font-bold">-</span>
+            </div>
           </div>
 
           <div class="flex items-center justify-between pt-1">
@@ -328,15 +382,19 @@
               <span id="cd4-unit" class="text-xs text-slate-500 dark:text-slate-400">sel/mm³</span>
             </div>
             <span id="cd4-kategori-badge" class="px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 text-xs font-semibold">
-              Belum Ada Data
+              Opsional / Belum Diperiksa
             </span>
           </div>
+
+          <p class="text-[10px] text-slate-400 leading-relaxed italic border-t border-slate-100 dark:border-slate-800 pt-2">
+            *Pemeriksaan CD4 bersifat opsional. Dianjurkan pada awal inisiasi pengobatan atau bila dokter mendeteksi indikasi infeksi oportunistik.
+          </p>
         </div>
 
         <!-- Hotline Konseling -->
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4.5 rounded-2xl space-y-2.5">
           <h4 class="text-xs font-bold text-slate-900 dark:text-white">Butuh Bantuan Konseling?</h4>
-          <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Hubungi tim konselor PDP RSUP Dr. Kariadi untuk konsultasi kendala terapi atau efek samping obat.</p>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Hubungi tim konselor PDP RSUP Dr. Kariadi untuk konsultasi kendala terapi, pengantar lab, atau efek samping obat.</p>
           <button onclick="alert('Membuka layanan Hotline Konseling PDP Kariadi: (024) 8413476')" class="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer">
             <span>📞 Hubungi Konselor PDP Kariadi</span>
           </button>
@@ -766,7 +824,18 @@
         }
       }
 
-      // Lab CD4 / VL
+      // Kunjungan Terakhir Pasien
+      if (data.kunjungan_terakhir) {
+        const kDateEl = document.getElementById('kunj-last-date');
+        const kAlasanEl = document.getElementById('kunj-last-alasan');
+        const kRejimenEl = document.getElementById('kunj-last-rejimen');
+
+        if (kDateEl) kDateEl.innerText = data.kunjungan_terakhir.tanggal_display || data.kunjungan_terakhir.tanggal || '-';
+        if (kAlasanEl) kAlasanEl.innerText = data.kunjungan_terakhir.alasan || '-';
+        if (kRejimenEl) kRejimenEl.innerText = data.kunjungan_terakhir.rejimen || data.rejimen_arv || '-';
+      }
+
+      // Viral Load Terakhir
       if (data.viral_load) {
         const vlDateEl = document.getElementById('vl-lab-date');
         const vlValEl = document.getElementById('vl-val-text');
@@ -774,7 +843,7 @@
         const vlBanner = document.getElementById('vl-uu-banner');
         const vlDesc = document.getElementById('vl-uu-desc');
 
-        if (vlDateEl) vlDateEl.innerText = data.viral_load.tanggal || '-';
+        if (vlDateEl) vlDateEl.innerText = data.viral_load.tanggal_display || data.viral_load.tanggal || '-';
         if (vlValEl) vlValEl.innerText = data.viral_load.has_record ? (data.viral_load.is_undetectable ? "UNDETECTABLE" : data.viral_load.hasil) : "-";
         if (vlKatEl) vlKatEl.innerText = data.viral_load.kategori || "Belum ada pemeriksaan";
 
@@ -795,15 +864,38 @@
         }
       }
 
+      // Jadwal Cek Viral Load Berikutnya
+      if (data.next_vl_due) {
+        const dueEl = document.getElementById('vl-next-due-date');
+        const badgeEl = document.getElementById('vl-next-status-badge');
+        const recEl = document.getElementById('vl-next-rec-text');
+
+        if (dueEl) dueEl.innerText = data.next_vl_due.due_date_display || '-';
+        if (recEl) recEl.innerText = data.next_vl_due.recommendation || '-';
+        if (badgeEl) {
+          badgeEl.innerText = data.next_vl_due.status_label || 'Jadwal Rutin';
+          if (data.next_vl_due.status === 'OVERDUE') {
+            badgeEl.className = "px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60";
+          } else if (data.next_vl_due.status === 'NEAR_DUE') {
+            badgeEl.className = "px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60";
+          } else if (data.next_vl_due.status === 'ON_TRACK') {
+            badgeEl.className = "px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60";
+          } else {
+            badgeEl.className = "px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700";
+          }
+        }
+      }
+
+      // CD4 / Imunitas (Opsional)
       if (data.cd4) {
         const cd4ValEl = document.getElementById('cd4-val');
         const cd4DateEl = document.getElementById('cd4-lab-date');
         const cd4Badge = document.getElementById('cd4-kategori-badge');
 
         if (cd4ValEl) cd4ValEl.innerText = data.cd4.has_record ? data.cd4.nilai : "-";
-        if (cd4DateEl) cd4DateEl.innerText = data.cd4.tanggal || "-";
+        if (cd4DateEl) cd4DateEl.innerText = data.cd4.tanggal_display || data.cd4.tanggal || "-";
         if (cd4Badge) {
-          cd4Badge.innerText = data.cd4.has_record ? (data.cd4.kategori || "Pemeriksaan Selesai") : "Belum Ada Data";
+          cd4Badge.innerText = data.cd4.has_record ? (data.cd4.kategori || "Pemeriksaan Selesai") : "Opsional / Belum Diperiksa";
         }
       }
     }
