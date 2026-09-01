@@ -978,22 +978,45 @@ def get_research_cohort_data(db: Session, filters: dict, is_export: bool = False
     }
 
 
-def get_pediatric_dashboard_data(db: Session, period_month: str = None):
-    cohort = get_research_cohort_data(db, {})
+def get_pediatric_dashboard_data(
+    db: Session,
+    period_month: str = None,
+    status_anak: str = None,
+    age_group: str = None,
+    regimen: str = None,
+    vl_status: str = None,
+    search: str = None
+):
+    """
+    Dashboard Khusus Kesehatan Anak & Program PPIA (<18 Tahun) RSUP Dr. Kariadi.
+    Mengintegrasikan data seluruh kohor anak (450+ pasien) dengan pemantauan tumbuh kembang,
+    regimen pediatrik (DTG/LPVr), profilaksis bayi terpajan, dan supresi VL.
+    """
+    cohort = get_research_cohort_data(db, {}, is_export=True)
     all_recs = cohort["records"]
     
-    peds = [r for r in all_recs if r["is_pediatric"]]
-    ped_pasien_ids = set(r["pasien_id"] for r in peds)
+    peds_master = [r for r in all_recs if r.get("is_pediatric")]
+    ped_pasien_ids = set(r["pasien_id"] for r in peds_master)
 
     # Monthly visit breakdown for pediatric cohort
-    kunj_list = db.query(Kunjungan).filter(Kunjungan.pasien_id.in_(ped_pasien_ids)).all()
+    kunjs_by_pid = _COHORT_RAW_CACHE.get("kunjs_by_pid")
     monthly_visits = {}
-    for k in kunj_list:
-        if k.tanggal_kunjungan:
-            m_key = k.tanggal_kunjungan[:7] # YYYY-MM
-            if m_key not in monthly_visits:
-                monthly_visits[m_key] = set()
-            monthly_visits[m_key].add(k.pasien_id)
+    if kunjs_by_pid:
+        for pid in ped_pasien_ids:
+            for k in kunjs_by_pid.get(pid, []):
+                if k.tanggal_kunjungan:
+                    m_key = k.tanggal_kunjungan[:7] # YYYY-MM
+                    if m_key not in monthly_visits:
+                        monthly_visits[m_key] = set()
+                    monthly_visits[m_key].add(pid)
+    else:
+        kunj_list = db.query(Kunjungan).filter(Kunjungan.pasien_id.in_(ped_pasien_ids)).all()
+        for k in kunj_list:
+            if k.tanggal_kunjungan:
+                m_key = k.tanggal_kunjungan[:7]
+                if m_key not in monthly_visits:
+                    monthly_visits[m_key] = set()
+                monthly_visits[m_key].add(k.pasien_id)
 
     sorted_months = sorted(monthly_visits.keys(), reverse=True)
     monthly_trend = []
@@ -1006,45 +1029,109 @@ def get_pediatric_dashboard_data(db: Session, period_month: str = None):
             "count": len(monthly_visits[m])
         })
 
-    # Apply period_month filter if requested
-    if period_month and period_month.strip() != "" and period_month.lower() != "all":
-        active_ids = monthly_visits.get(period_month, set())
-        peds = [r for r in peds if r["pasien_id"] in active_ids]
-    
-    terpajan_profilaksis = []
-    odhiv_terkonfirmasi = []
-    skrining_negatif = []
-    
-    for r in peds:
-        rejimen_lower = str(r["nama_rejimen"] or "").lower()
-        alasan_lower = str(r["alasan_kunjungan"] or "").lower()
-        status_odhiv = str(r["status_odhiv"] or "").strip()
+    # Classify each pediatric patient into clinical PPIA category and age group
+    for r in peds_master:
+        u = r.get("umur")
+        if u is not None:
+            if u < 1:
+                r["kelompok_usia_pediatrik"] = "Bayi (<1 Th)"
+            elif u <= 4:
+                r["kelompok_usia_pediatrik"] = "Balita (1-4 Th)"
+            elif u <= 9:
+                r["kelompok_usia_pediatrik"] = "Anak Sekolah (5-9 Th)"
+            elif u <= 14:
+                r["kelompok_usia_pediatrik"] = "Remaja Awal (10-14 Th)"
+            else:
+                r["kelompok_usia_pediatrik"] = "Remaja (15-17 Th)"
+        else:
+            r["kelompok_usia_pediatrik"] = "Anak (Usia Belum Tercatat)"
+
+        rejimen_lower = str(r.get("nama_rejimen") or "").lower()
+        alasan_lower = str(r.get("alasan_kunjungan") or "").lower()
+        status_odhiv = str(r.get("status_odhiv") or "").strip()
         
         is_prophylaxis = ("profilaksis" in alasan_lower or 
                           "profilaksis" in rejimen_lower or 
-                          ("zdv" in rejimen_lower and "3tc" not in rejimen_lower))
+                          ("zdv" in rejimen_lower and "3tc" not in rejimen_lower) or
+                          (r.get("kelompok_usia_pediatrik") == "Bayi (<1 Th)" and ("zdv" in rejimen_lower or "kotri" in alasan_lower or status_odhiv != "ODHIV")))
         
         if is_prophylaxis:
             r["status_anak_detail"] = "Bayi Terpajan (Profilaksis ARV/Kotrimoksazol)"
+            r["status_anak_key"] = "prophylaxis"
             r["badge_color"] = "bg-amber-100 text-amber-800 border-amber-300"
-            terpajan_profilaksis.append(r)
-        elif status_odhiv == "ODHIV":
+        elif status_odhiv == "ODHIV" or (r.get("nama_rejimen") and r.get("nama_rejimen") != "-"):
             r["status_anak_detail"] = "Anak Terkonfirmasi ODHIV (Terapi ARV)"
+            r["status_anak_key"] = "odhiv"
             r["badge_color"] = "bg-rose-100 text-rose-800 border-rose-300"
-            odhiv_terkonfirmasi.append(r)
         else:
             r["status_anak_detail"] = "Anak Skrining Non-Reaktif (Bukan ODHIV)"
+            r["status_anak_key"] = "negative"
             r["badge_color"] = "bg-emerald-100 text-emerald-800 border-emerald-300"
-            skrining_negatif.append(r)
 
+    # Filter by period_month
+    peds = peds_master
+    if period_month and period_month.strip() != "" and period_month.lower() != "all":
+        active_ids = monthly_visits.get(period_month, set())
+        peds = [r for r in peds if r["pasien_id"] in active_ids]
+
+    # Filter by status_anak
+    if status_anak and status_anak.strip() != "" and status_anak.lower() != "all":
+        peds = [r for r in peds if r.get("status_anak_key") == status_anak.lower() or status_anak.lower() in r.get("status_anak_detail", "").lower()]
+
+    # Filter by age_group
+    if age_group and age_group.strip() != "" and age_group.lower() != "all":
+        peds = [r for r in peds if r.get("kelompok_usia_pediatrik") == age_group]
+
+    # Filter by regimen
+    if regimen and regimen.strip() != "" and regimen.lower() != "all":
+        reg_low = regimen.lower()
+        if reg_low == "dtg":
+            peds = [r for r in peds if "dtg" in str(r.get("nama_rejimen") or "").lower()]
+        elif reg_low == "efv":
+            peds = [r for r in peds if "efv" in str(r.get("nama_rejimen") or "").lower()]
+        elif reg_low == "zdv_mono":
+            peds = [r for r in peds if "zdv" in str(r.get("nama_rejimen") or "").lower() and "3tc" not in str(r.get("nama_rejimen") or "").lower()]
+        else:
+            peds = [r for r in peds if reg_low in str(r.get("nama_rejimen") or "").lower()]
+
+    # Filter by VL status
+    if vl_status and vl_status.strip() != "" and vl_status.lower() != "all":
+        if vl_status == "suppressed":
+            peds = [r for r in peds if r.get("is_suppressed")]
+        elif vl_status == "unsuppressed":
+            peds = [r for r in peds if r.get("kategori_vl") and "gagal" in r.get("kategori_vl", "").lower()]
+        elif vl_status == "untested":
+            peds = [r for r in peds if r.get("kategori_vl") == "Belum Tes VL" or not r.get("hasil_vl_raw") or r.get("hasil_vl_raw") == "-"]
+
+    # Filter by search
+    if search and search.strip() != "":
+        kw = search.strip().lower()
+        peds = [r for r in peds if kw in str(r.get("no_rekam_medik") or "").lower() or kw in str(r.get("nama_pasien") or "").lower() or kw in str(r.get("pasien_id") or "").lower()]
+
+    # Summary Calculations
     total_anak = len(peds)
-    total_odhiv = len(odhiv_terkonfirmasi)
-    total_profilaksis = len(terpajan_profilaksis)
-    total_negatif = len(skrining_negatif)
-    
-    tested_vl = sum(1 for r in peds if r["kategori_vl"] != "Belum Tes VL")
-    suppressed_vl = sum(1 for r in peds if r["is_suppressed"])
-    vls_rate = round((suppressed_vl / tested_vl * 100), 1) if tested_vl > 0 else 100.0
+    total_odhiv = sum(1 for r in peds if r.get("status_anak_key") == "odhiv")
+    total_profilaksis = sum(1 for r in peds if r.get("status_anak_key") == "prophylaxis")
+    total_negatif = sum(1 for r in peds if r.get("status_anak_key") == "negative")
+
+    tested_vl = sum(1 for r in peds if r.get("hasil_vl_raw") and r.get("hasil_vl_raw") != "-")
+    suppressed_vl = sum(1 for r in peds if r.get("is_suppressed"))
+    vls_rate = round((suppressed_vl / tested_vl * 100), 1) if tested_vl > 0 else 0.0
+
+    # Age group counts
+    from collections import Counter
+    age_counts = Counter(r.get("kelompok_usia_pediatrik") for r in peds)
+    age_distribution = [
+        {"group": "Bayi (<1 Th)", "count": age_counts.get("Bayi (<1 Th)", 0)},
+        {"group": "Balita (1-4 Th)", "count": age_counts.get("Balita (1-4 Th)", 0)},
+        {"group": "Anak Sekolah (5-9 Th)", "count": age_counts.get("Anak Sekolah (5-9 Th)", 0)},
+        {"group": "Remaja Awal (10-14 Th)", "count": age_counts.get("Remaja Awal (10-14 Th)", 0)},
+        {"group": "Remaja (15-17 Th)", "count": age_counts.get("Remaja (15-17 Th)", 0)}
+    ]
+
+    # Regimen counts
+    reg_counts = Counter(r.get("nama_rejimen") or "Profilaksis / Skrining" for r in peds if (r.get("nama_rejimen") and r.get("nama_rejimen") != "-"))
+    top_regimens = [{"regimen": k, "count": v} for k, v in reg_counts.most_common(8)]
 
     return {
         "summary": {
@@ -1056,6 +1143,8 @@ def get_pediatric_dashboard_data(db: Session, period_month: str = None):
             "suppressed_vl": suppressed_vl,
             "vls_rate": vls_rate
         },
+        "age_distribution": age_distribution,
+        "top_regimens": top_regimens,
         "monthly_trend": monthly_trend,
         "available_months": monthly_trend,
         "records": peds

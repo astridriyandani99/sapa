@@ -152,34 +152,59 @@ def get_research_dashboard(payload: ResearchFilterRequest, db: Session = Depends
     return result
 
 @app.get("/api/dashboard/pediatric")
-def get_pediatric_dashboard(period_month: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    return get_pediatric_dashboard_data(db, period_month=period_month)
+def get_pediatric_dashboard(
+    period_month: Optional[str] = Query(None),
+    status_anak: Optional[str] = Query(None),
+    age_group: Optional[str] = Query(None),
+    regimen: Optional[str] = Query(None),
+    vl_status: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return get_pediatric_dashboard_data(
+        db,
+        period_month=period_month,
+        status_anak=status_anak,
+        age_group=age_group,
+        regimen=regimen,
+        vl_status=vl_status,
+        search=search
+    )
 
 @app.get("/api/export/pediatric")
 def export_pediatric_data(
     period_month: Optional[str] = Query(None),
-    filter_type: Optional[str] = Query("all"),
+    status_anak: Optional[str] = Query("all"),
+    age_group: Optional[str] = Query(None),
+    regimen: Optional[str] = Query(None),
+    vl_status: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     anonymize: bool = Query(False),
     db: Session = Depends(get_db)
 ):
-    data = get_pediatric_dashboard_data(db, period_month=period_month)
+    data = get_pediatric_dashboard_data(
+        db,
+        period_month=period_month,
+        status_anak=status_anak,
+        age_group=age_group,
+        regimen=regimen,
+        vl_status=vl_status,
+        search=search
+    )
     records = data["records"]
     
     filter_label = "Semua Kohor Anak (<18 Th)"
-    if filter_type == "odhiv":
-        records = [r for r in records if r.get("status_anak_detail") and "Terkonfirmasi ODHIV" in r["status_anak_detail"]]
+    if status_anak == "odhiv":
         filter_label = "Anak Terkonfirmasi ODHIV (Terapi ARV)"
-    elif filter_type == "prophylaxis":
-        records = [r for r in records if r.get("status_anak_detail") and "Terpajan" in r["status_anak_detail"]]
+    elif status_anak == "prophylaxis":
         filter_label = "Bayi Terpajan (Profilaksis PPIA)"
-    elif filter_type == "negative":
-        records = [r for r in records if r.get("status_anak_detail") and "Non-Reaktif" in r["status_anak_detail"]]
+    elif status_anak == "negative":
         filter_label = "Skrining Non-Reaktif (Bukan ODHIV)"
         
     period_label = period_month if (period_month and period_month.lower() != "all") else "Semua Bulan Kunjungan"
     
     buf = generate_pediatric_excel(records, period_label=period_label, filter_type=filter_label, anonymize=anonymize)
-    filename = f"Kohor_Anak_PPIA_Kariadi_{filter_type}_{period_month or 'All'}.xlsx"
+    filename = f"Kohor_Anak_PPIA_Kariadi_{status_anak or 'All'}_{period_month or 'All'}.xlsx"
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

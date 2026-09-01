@@ -992,6 +992,7 @@
     </div>
 
     <!-- ================================================================= -->
+    <!-- ================================================================= -->
     <!-- TAB 4: PEDIATRIC & PPIA DASHBOARD VIEW (RSUP DR. KARIADI)         -->
     <!-- ================================================================= -->
     <div id="view-pediatric" class="hidden space-y-6">
@@ -1006,14 +1007,90 @@
           <h2 class="text-2xl font-extrabold mt-1">Dashboard Kesehatan Anak, Kohor Terpajan & Program PPIA</h2>
           <p class="text-xs text-brand-100 mt-0.5">Pemantauan Khusus Anak Terkonfirmasi ODHIV, Bayi Terpajan Profilaksis ARV/Kotrimoksazol, dan Skrining EID</p>
         </div>
-        <div class="flex gap-2">
-          <select id="filter-pediatric-month" onchange="loadPediatricData()" class="bg-white/10 text-white border border-white/20 rounded-xl text-xs px-3 py-2 outline-none cursor-pointer">
-            <option value="all" class="text-slate-900">Semua Bulan Kunjungan Anak</option>
-          </select>
+        <div class="flex items-center gap-2">
+          <button onclick="exportPediatricExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 3h8a1 1 0 110 2H6a1 1 0 110-2zm0 4h8a1 1 0 110 2H6a1 1 0 110-2zm0 4h5a1 1 0 110 2H6a1 1 0 110-2z"></path></svg>
+            <span>Ekspor Excel (.xlsx)</span>
+          </button>
           <button onclick="loadPediatricData()" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl backdrop-blur-sm transition flex items-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            <span>Refresh Data</span>
+            <span>Refresh</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Advanced Pediatric Multi-Filter Suite -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-amber-600 text-base">🔍</span>
+            <h3 class="text-sm font-bold text-slate-800">Filter Multivariabel Kohor Anak & PPIA</h3>
+          </div>
+          <button onclick="resetPediatricFilters()" class="text-xs text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1 cursor-pointer">
+            <span>↺ Reset Filter Anak</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <!-- 1. Search -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Cari Pasien / No. RM</label>
+            <input type="text" id="filter-ped-search" oninput="debounceApplyPediatricFilter()" placeholder="No RM / Nama..." class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition">
+          </div>
+
+          <!-- 2. Status Anak -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Status Klinis Anak</label>
+            <select id="filter-ped-status" onchange="applyPediatricFilters()" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none transition cursor-pointer">
+              <option value="all">Semua Status Anak</option>
+              <option value="odhiv">ODHIV (Terapi ARV Rutin)</option>
+              <option value="prophylaxis">Bayi Terpajan (Profilaksis)</option>
+              <option value="negative">Skrining Non-Reaktif</option>
+            </select>
+          </div>
+
+          <!-- 3. Kelompok Usia -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Tumbuh Kembang Usia</label>
+            <select id="filter-ped-age-group" onchange="applyPediatricFilters()" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none transition cursor-pointer">
+              <option value="all">Semua Usia (&lt;18 Th)</option>
+              <option value="Bayi (<1 Th)">👶 Bayi (&lt;1 Tahun)</option>
+              <option value="Balita (1-4 Th)">🧒 Balita (1 - 4 Tahun)</option>
+              <option value="Anak Sekolah (5-9 Th)">👦 Anak Sekolah (5 - 9 Tahun)</option>
+              <option value="Remaja Awal (10-14 Th)">🧑 Remaja Awal (10 - 14 Tahun)</option>
+              <option value="Remaja (15-17 Th)">🧑‍🎓 Remaja (15 - 17 Tahun)</option>
+            </select>
+          </div>
+
+          <!-- 4. Rejimen ARV -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Rejimen / Profilaksis</label>
+            <select id="filter-ped-regimen" onchange="applyPediatricFilters()" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none transition cursor-pointer">
+              <option value="all">Semua Rejimen</option>
+              <option value="dtg">Berbasis Dolutegravir (DTG)</option>
+              <option value="efv">Berbasis Efavirenz (EFV)</option>
+              <option value="zdv_mono">Profilaksis Zidovudine (ZDV)</option>
+            </select>
+          </div>
+
+          <!-- 5. Supresi VL -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Supresi Viral Load</label>
+            <select id="filter-ped-vl" onchange="applyPediatricFilters()" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none transition cursor-pointer">
+              <option value="all">Semua Status VL</option>
+              <option value="suppressed">Tersupresi (&lt;1000 kopi)</option>
+              <option value="unsuppressed">Gagal Virologis (&ge;1000)</option>
+              <option value="untested">Belum Tes VL</option>
+            </select>
+          </div>
+
+          <!-- 6. Periode Kunjungan -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">Periode Bulan Kunjungan</label>
+            <select id="filter-pediatric-month" onchange="applyPediatricFilters()" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500 outline-none transition cursor-pointer font-medium text-slate-800">
+              <option value="all">Semua Bulan Kunjungan</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1023,10 +1100,11 @@
           <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl font-bold">👶</div>
           <div>
             <span class="text-xs font-semibold text-slate-500 flex items-center">
-              Total Kohor Anak (&lt;18 Th)
+              Total Kohor Anak Terfilter
               <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-100 hover:bg-brand-600 hover:text-white text-slate-500 text-[10px] font-bold cursor-help transition ml-1.5" title="[DEFINISI &amp; SUMBER DATA]&#10;• Definisi: Seluruh pasien anak &amp; remaja usia &lt;18 tahun sesuai UU Perlindungan Anak &amp; Standar RS Kariadi.&#10;• Sumber Data: Master Register SIHA &amp; Log Kunjungan.">?</span>
             </span>
             <span id="ped-stat-total" class="text-2xl font-extrabold text-slate-900">--</span>
+            <span class="text-[10px] text-slate-400 block">Usia &lt; 18 Tahun</span>
           </div>
         </div>
 
@@ -1050,7 +1128,7 @@
               <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-100 hover:bg-amber-600 hover:text-white text-slate-500 text-[10px] font-bold cursor-help transition ml-1.5" title="[DEFINISI &amp; MITIGASI BIAS PPIA]&#10;• Definisi: Bayi lahir dari ibu ODHIV yang menerima terapi pencegahan (Profilaksis Zidovudin / Kotrimoksazol).&#10;• Mitigasi Bias: Dipisahkan dari kohor PDP dewasa agar tidak terjadi pembiasan kasus baru.">?</span>
             </span>
             <span id="ped-stat-prophylaxis" class="text-2xl font-extrabold text-amber-600">--</span>
-            <span class="text-[10px] text-slate-400 block">Non-Reaktif &amp; ZDV/Cotrimoxazole</span>
+            <span class="text-[10px] text-slate-400 block">Program PPIA / PMTCT</span>
           </div>
         </div>
 
@@ -1062,56 +1140,65 @@
               <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-500 text-[10px] font-bold cursor-help transition ml-1.5" title="[DEFINISI &amp; SUMBER DATA]&#10;• Definisi: Persentase anak terkonfirmasi ODHIV dengan viral load &lt;1.000 kopi/mL.&#10;• Sumber Data: Hasil Lab Viral Load SIHA.">?</span>
             </span>
             <span id="ped-stat-vls" class="text-2xl font-extrabold text-emerald-600">--</span>
+            <span id="ped-stat-vls-sub" class="text-[10px] text-slate-400 block">Efikasi Terapi ARV Anak</span>
           </div>
         </div>
       </div>
 
-      <!-- 2 High-Impact Visual Charts for Pediatric & PPIA -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- 3 Visual Analytics Charts for Pediatric & PPIA -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Chart 1: Status Kohor Anak & Bayi PPIA -->
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <span class="text-amber-600">📊</span> Sebaran Status Kohor Anak & Bayi PPIA (&lt;18 th)
+              <span class="text-amber-600">📊</span> Status Kohor Anak & PPIA
             </h3>
-            <span class="text-[11px] font-semibold text-slate-400">RSUP Dr. Kariadi</span>
+            <span class="text-[11px] font-semibold text-slate-400">Proporsi</span>
           </div>
-          <div class="relative h-64 flex items-center justify-center">
+          <div class="relative h-60 flex items-center justify-center">
             <canvas id="chart-pediatric-status"></canvas>
           </div>
         </div>
 
-        <!-- Chart 2: Sebaran Rejimen ARV & Profilaksis Pediatrik -->
+        <!-- Chart 2: Kelompok Usia Tumbuh Kembang -->
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <span class="text-brand-600">💊</span> Sebaran Rejimen ARV & Profilaksis Pediatrik
+              <span class="text-indigo-600">👶</span> Distribusi Usia Anak
             </h3>
-            <span class="text-[11px] font-semibold text-slate-400">Terapi Rutin vs Pencegahan</span>
+            <span class="text-[11px] font-semibold text-slate-400">Standar WHO</span>
           </div>
-          <div class="relative h-64">
+          <div class="relative h-60">
+            <canvas id="chart-pediatric-age"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3: Sebaran Rejimen ARV & Profilaksis Pediatrik -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span class="text-brand-600">💊</span> Rejimen Terapi & Profilaksis
+            </h3>
+            <span class="text-[11px] font-semibold text-slate-400">Top Rejimen</span>
+          </div>
+          <div class="relative h-60">
             <canvas id="chart-pediatric-regimen"></canvas>
           </div>
         </div>
       </div>
 
-      <!-- Section Table & Sub-filters -->
+      <!-- Section Table & Pagination -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h3 class="text-base font-bold text-slate-900">Daftar Rincian Kohor Anak & Bayi PPIA</h3>
-            <p class="text-xs text-slate-500">Menampilkan rincian medis pasien usia dibawah 18 tahun (Standar RSUP Dr. Kariadi)</p>
+            <h3 class="text-base font-bold text-slate-900">Daftar Rincian Pasien Kohor Anak & Bayi PPIA</h3>
+            <p id="pediatric-table-count-info" class="text-xs text-slate-500">Memuat rincian medis pasien anak &lt;18 tahun...</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <button onclick="filterPediatricList('all')" id="btn-ped-all" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white border border-slate-900 shadow-xs cursor-pointer transition">Semua Anak</button>
-            <button onclick="filterPediatricList('prophylaxis')" id="btn-ped-prophylaxis" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 cursor-pointer transition">Bayi Terpajan (Profilaksis)</button>
-            <button onclick="filterPediatricList('odhiv')" id="btn-ped-odhiv" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 cursor-pointer transition">ODHIV (Terapi ARV)</button>
-            <button onclick="filterPediatricList('negative')" id="btn-ped-negative" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 cursor-pointer transition">Skrining Non-Reaktif</button>
-            
-            <button onclick="exportPediatricExcel()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer ml-2">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 3h8a1 1 0 110 2H6a1 1 0 110-2zm0 4h8a1 1 0 110 2H6a1 1 0 110-2zm0 4h5a1 1 0 110 2H6a1 1 0 110-2z"></path></svg>
-              <span>Ekspor Excel (.xlsx)</span>
-            </button>
+            <button onclick="quickFilterPediatricStatus('all')" id="btn-ped-quick-all" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white border border-slate-900 shadow-xs cursor-pointer transition">Semua</button>
+            <button onclick="quickFilterPediatricStatus('prophylaxis')" id="btn-ped-quick-prophylaxis" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 cursor-pointer transition">Bayi Terpajan</button>
+            <button onclick="quickFilterPediatricStatus('odhiv')" id="btn-ped-quick-odhiv" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 cursor-pointer transition">ODHIV (ARV)</button>
+            <button onclick="quickFilterPediatricStatus('negative')" id="btn-ped-quick-negative" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 cursor-pointer transition">Skrining Non-Reaktif</button>
           </div>
         </div>
 
@@ -1123,8 +1210,9 @@
                 <th class="px-5 py-3">No. RM</th>
                 <th class="px-5 py-3">Nama Pasien</th>
                 <th class="px-5 py-3 text-center">Usia</th>
+                <th class="px-5 py-3 text-center">Kelompok Usia</th>
                 <th class="px-5 py-3 text-center">Kunjungan Terakhir</th>
-                <th class="px-5 py-3 text-center">Kategori Status Anak</th>
+                <th class="px-5 py-3 text-center">Status Anak</th>
                 <th class="px-5 py-3">Rejimen / Profilaksis</th>
                 <th class="px-5 py-3">Alasan Kunjungan</th>
                 <th class="px-5 py-3 text-center">Hasil Lab VL</th>
@@ -1134,6 +1222,14 @@
               <!-- Dynamically rendered -->
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="px-5 py-3.5 bg-slate-50/80 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <span id="ped-page-info" class="text-slate-500 font-medium">Menampilkan 1 - 25 data</span>
+          <div id="ped-pagination-controls" class="flex items-center gap-1">
+            <!-- Dynamically populated pagination buttons -->
+          </div>
         </div>
       </div>
 
@@ -2934,28 +3030,118 @@
     // PEDIATRIC & PPIA DASHBOARD LOGIC
     // ==========================================
     let pediatricDataCache = null;
+    let pediatricFilterDebounceTimer = null;
+    let currentPediatricPage = 1;
+    const pediatricPageSize = 25;
+    let chartPediatricStatus = null;
+    let chartPediatricAge = null;
+    let chartPediatricRegimen = null;
+
+    function debounceApplyPediatricFilter() {
+      clearTimeout(pediatricFilterDebounceTimer);
+      pediatricFilterDebounceTimer = setTimeout(() => {
+        applyPediatricFilters();
+      }, 300);
+    }
+
+    function getPediatricFilterParams() {
+      const monthSel = document.getElementById('filter-pediatric-month');
+      const statusSel = document.getElementById('filter-ped-status');
+      const ageSel = document.getElementById('filter-ped-age-group');
+      const regSel = document.getElementById('filter-ped-regimen');
+      const vlSel = document.getElementById('filter-ped-vl');
+      const searchInput = document.getElementById('filter-ped-search');
+
+      const params = new URLSearchParams();
+      if (monthSel && monthSel.value && monthSel.value !== 'all') params.append('period_month', monthSel.value);
+      if (statusSel && statusSel.value && statusSel.value !== 'all') params.append('status_anak', statusSel.value);
+      if (ageSel && ageSel.value && ageSel.value !== 'all') params.append('age_group', ageSel.value);
+      if (regSel && regSel.value && regSel.value !== 'all') params.append('regimen', regSel.value);
+      if (vlSel && vlSel.value && vlSel.value !== 'all') params.append('vl_status', vlSel.value);
+      if (searchInput && searchInput.value.trim() !== '') params.append('search', searchInput.value.trim());
+
+      return params;
+    }
 
     async function loadPediatricData() {
+      const tbody = document.getElementById('pediatric-table-body');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-500"><div class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span><span>Memuat kohor anak & PPIA...</span></div></td></tr>`;
+      }
+
       try {
-        const monthSel = document.getElementById('filter-pediatric-month');
-        const period = monthSel ? monthSel.value : 'all';
-        const res = await fetch(`/api/dashboard/pediatric?period_month=${encodeURIComponent(period)}`);
+        const params = getPediatricFilterParams();
+        const res = await fetch(`/api/dashboard/pediatric?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         pediatricDataCache = data;
+        currentPediatricPage = 1;
         renderPediatricDashboard(data);
       } catch (e) {
         console.error("Gagal memuat data pediatrik:", e);
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-rose-500 font-medium">Gagal memuat data kohor anak. Silakan refresh atau periksa koneksi.</td></tr>`;
+        }
       }
     }
 
-    function renderPediatricDashboard(data) {
-      const summary = data.summary;
-      if (document.getElementById('ped-stat-total')) document.getElementById('ped-stat-total').innerText = (summary.total_anak || 0).toLocaleString('id-ID');
-      if (document.getElementById('ped-stat-odhiv')) document.getElementById('ped-stat-odhiv').innerText = (summary.odhiv_terkonfirmasi || 0).toLocaleString('id-ID');
-      if (document.getElementById('ped-stat-prophylaxis')) document.getElementById('ped-stat-prophylaxis').innerText = (summary.bayi_terpajan_profilaksis || 0).toLocaleString('id-ID');
-      if (document.getElementById('ped-stat-vls')) document.getElementById('ped-stat-vls').innerText = (summary.vls_rate || 100) + '%';
+    function applyPediatricFilters() {
+      loadPediatricData();
+    }
 
-      // Populate monthly filter dropdown if empty
+    function resetPediatricFilters() {
+      if (document.getElementById('filter-ped-search')) document.getElementById('filter-ped-search').value = '';
+      if (document.getElementById('filter-ped-status')) document.getElementById('filter-ped-status').value = 'all';
+      if (document.getElementById('filter-ped-age-group')) document.getElementById('filter-ped-age-group').value = 'all';
+      if (document.getElementById('filter-ped-regimen')) document.getElementById('filter-ped-regimen').value = 'all';
+      if (document.getElementById('filter-ped-vl')) document.getElementById('filter-ped-vl').value = 'all';
+      if (document.getElementById('filter-pediatric-month')) document.getElementById('filter-pediatric-month').value = 'all';
+
+      // Reset quick filter button styles
+      updateQuickFilterButtons('all');
+      loadPediatricData();
+    }
+
+    function quickFilterPediatricStatus(statusKey) {
+      const statusSel = document.getElementById('filter-ped-status');
+      if (statusSel) {
+        statusSel.value = statusKey;
+      }
+      updateQuickFilterButtons(statusKey);
+      loadPediatricData();
+    }
+
+    function updateQuickFilterButtons(activeKey) {
+      const keys = ['all', 'prophylaxis', 'odhiv', 'negative'];
+      keys.forEach(k => {
+        const btn = document.getElementById(`btn-ped-quick-${k}`);
+        if (!btn) return;
+        if (k === activeKey) {
+          btn.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white border border-slate-900 shadow-xs cursor-pointer transition';
+        } else {
+          if (k === 'prophylaxis') btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 cursor-pointer transition';
+          else if (k === 'odhiv') btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 cursor-pointer transition';
+          else if (k === 'negative') btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 cursor-pointer transition';
+          else btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 cursor-pointer transition';
+        }
+      });
+    }
+
+    function renderPediatricDashboard(data) {
+      const summary = data.summary || {};
+      const totalAnak = summary.total_anak || 0;
+      const odhiv = summary.odhiv_terkonfirmasi || 0;
+      const prophylaxis = summary.bayi_terpajan_profilaksis || 0;
+      const vlsRate = summary.vls_rate !== undefined ? summary.vls_rate : 0;
+      const testedVl = summary.tested_vl || 0;
+
+      if (document.getElementById('ped-stat-total')) document.getElementById('ped-stat-total').innerText = totalAnak.toLocaleString('id-ID');
+      if (document.getElementById('ped-stat-odhiv')) document.getElementById('ped-stat-odhiv').innerText = odhiv.toLocaleString('id-ID');
+      if (document.getElementById('ped-stat-prophylaxis')) document.getElementById('ped-stat-prophylaxis').innerText = prophylaxis.toLocaleString('id-ID');
+      if (document.getElementById('ped-stat-vls')) document.getElementById('ped-stat-vls').innerText = vlsRate + '%';
+      if (document.getElementById('ped-stat-vls-sub')) document.getElementById('ped-stat-vls-sub').innerText = `${summary.suppressed_vl || 0} dari ${testedVl} dites VL`;
+
+      // Populate monthly filter dropdown once if empty
       const monthSel = document.getElementById('filter-pediatric-month');
       if (monthSel && monthSel.options.length <= 1 && data.available_months) {
         data.available_months.forEach(m => {
@@ -2968,64 +3154,163 @@
       }
 
       renderPediatricStatusChart(summary);
-      renderPediatricRegimenChart(data.records);
-      renderPediatricTable(data.records);
+      renderPediatricAgeChart(data.age_distribution);
+      renderPediatricRegimenChart(data.top_regimens, data.records);
+      renderPediatricTable(data.records, currentPediatricPage);
     }
 
-    let currentPediatricFilterType = 'all';
+    function renderPediatricStatusChart(summary) {
+      const ctxEl = document.getElementById('chart-pediatric-status');
+      if (!ctxEl) return;
+      const ctx = ctxEl.getContext('2d');
+      if (chartPediatricStatus) chartPediatricStatus.destroy();
 
-    function filterPediatricList(type) {
-      currentPediatricFilterType = type || 'all';
+      chartPediatricStatus = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            'ODHIV (Terapi ARV)',
+            'Bayi Terpajan (Profilaksis)',
+            'Skrining Non-Reaktif'
+          ],
+          datasets: [{
+            data: [
+              summary.odhiv_terkonfirmasi || 0,
+              summary.bayi_terpajan_profilaksis || 0,
+              summary.skrining_non_reaktif || 0
+            ],
+            backgroundColor: ['#EF4444', '#F59E0B', '#10B981'],
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+          },
+          cutout: '62%'
+        }
+      });
+    }
 
-      // Update button visual styles
-      ['all', 'prophylaxis', 'odhiv', 'negative'].forEach(t => {
-        const btn = document.getElementById(`btn-ped-${t}`);
-        if (btn) {
-          if (t === currentPediatricFilterType) {
-            btn.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-900 text-white border border-slate-900 shadow-xs cursor-pointer transition';
-          } else {
-            if (t === 'prophylaxis') btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 cursor-pointer transition';
-            else if (t === 'odhiv') btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 cursor-pointer transition';
-            else if (t === 'negative') btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 cursor-pointer transition';
-            else btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 cursor-pointer transition';
+    function renderPediatricAgeChart(ageDist) {
+      const ctxEl = document.getElementById('chart-pediatric-age');
+      if (!ctxEl) return;
+      const ctx = ctxEl.getContext('2d');
+      if (chartPediatricAge) chartPediatricAge.destroy();
+
+      const items = ageDist || [];
+      chartPediatricAge = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: items.map(d => d.group),
+          datasets: [{
+            label: 'Jumlah Anak',
+            data: items.map(d => d.count),
+            backgroundColor: '#6366F1',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+            y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
           }
         }
       });
+    }
 
-      if (!pediatricDataCache || !pediatricDataCache.records) return;
-      let recs = pediatricDataCache.records;
-      if (type === 'odhiv') {
-        recs = recs.filter(r => r.status_anak_detail && r.status_anak_detail.includes('Terkonfirmasi ODHIV'));
-      } else if (type === 'prophylaxis') {
-        recs = recs.filter(r => r.status_anak_detail && r.status_anak_detail.includes('Terpajan'));
-      } else if (type === 'negative') {
-        recs = recs.filter(r => r.status_anak_detail && r.status_anak_detail.includes('Non-Reaktif'));
+    function renderPediatricRegimenChart(topRegs, records) {
+      const ctxEl = document.getElementById('chart-pediatric-regimen');
+      if (!ctxEl) return;
+      const ctx = ctxEl.getContext('2d');
+      if (chartPediatricRegimen) chartPediatricRegimen.destroy();
+
+      let labels = [];
+      let counts = [];
+
+      if (topRegs && topRegs.length > 0) {
+        labels = topRegs.map(r => r.regimen);
+        counts = topRegs.map(r => r.count);
+      } else {
+        const regCounts = {};
+        (records || []).forEach(r => {
+          const reg = r.nama_rejimen || 'Profilaksis / Skrining';
+          regCounts[reg] = (regCounts[reg] || 0) + 1;
+        });
+        const sorted = Object.entries(regCounts).sort((a,b) => b[1] - a[1]).slice(0, 6);
+        labels = sorted.map(s => s[0]);
+        counts = sorted.map(s => s[1]);
       }
-      renderPediatricTable(recs);
+
+      chartPediatricRegimen = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Jumlah Pasien',
+            data: counts,
+            backgroundColor: '#0EA5E9',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: '#F1F5F9' } },
+            y: { grid: { display: false }, ticks: { font: { size: 9 } } }
+          }
+        }
+      });
     }
 
-    function exportPediatricExcel() {
-      const monthSel = document.getElementById('filter-pediatric-month');
-      const period = monthSel ? monthSel.value : 'all';
-      const filterType = currentPediatricFilterType || 'all';
-      
-      const url = `/api/export/pediatric?period_month=${encodeURIComponent(period)}&filter_type=${encodeURIComponent(filterType)}&anonymize=false`;
-      window.location.href = url;
+    function goToPediatricPage(page) {
+      currentPediatricPage = page;
+      if (pediatricDataCache && pediatricDataCache.records) {
+        renderPediatricTable(pediatricDataCache.records, currentPediatricPage);
+      }
     }
 
-    function renderPediatricTable(records) {
+    function renderPediatricTable(records, page = 1) {
       const tbody = document.getElementById('pediatric-table-body');
       if (!tbody) return;
       tbody.innerHTML = '';
-      if (!records || records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400">Tidak ada data kohor anak yang sesuai kategori ini.</td></tr>`;
+
+      const total = records ? records.length : 0;
+      const countInfo = document.getElementById('pediatric-table-count-info');
+      if (countInfo) {
+        countInfo.innerText = `${total.toLocaleString('id-ID')} pasien anak teridentifikasi sesuai kriteria filter.`;
+      }
+
+      if (!records || total === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-400">Tidak ada data kohor anak yang sesuai kategori ini.</td></tr>`;
+        const pageInfo = document.getElementById('ped-page-info');
+        if (pageInfo) pageInfo.innerText = 'Menampilkan 0 data';
+        const paginationCtr = document.getElementById('ped-pagination-controls');
+        if (paginationCtr) paginationCtr.innerHTML = '';
         return;
       }
-      records.forEach(r => {
+
+      const totalPages = Math.ceil(total / pediatricPageSize);
+      const curPage = Math.min(Math.max(1, page), totalPages);
+      const startIdx = (curPage - 1) * pediatricPageSize;
+      const endIdx = Math.min(startIdx + pediatricPageSize, total);
+      const pageRecords = records.slice(startIdx, endIdx);
+
+      pageRecords.forEach(r => {
         const pId = r.pasien_id || '-';
         const rm = r.no_rekam_medik || '-';
         const nama = r.nama_pasien || '-';
         const age = (r.umur !== null && r.umur !== undefined) ? `${r.umur} Th` : (r.kategori_umur || 'Anak');
+        const ageGroup = r.kelompok_usia_pediatrik || 'Anak';
         const tglKunj = r.tanggal_kunjungan || '-';
         const statusDetail = r.status_anak_detail || 'Anak Skrining PDP';
         const badgeColor = r.badge_color || 'bg-slate-100 text-slate-700 border-slate-300';
@@ -3037,17 +3322,51 @@
         tr.className = 'hover:bg-slate-50 border-b border-slate-100 text-slate-700';
         tr.innerHTML = `
           <td class="px-5 py-3 font-semibold text-slate-900">${pId}</td>
-          <td class="px-5 py-3 font-mono text-slate-600">${rm}</td>
+          <td class="px-5 py-3 font-mono font-bold text-brand-700">${rm}</td>
           <td class="px-5 py-3 font-medium text-slate-800">${nama}</td>
-          <td class="px-5 py-3 font-bold text-center text-brand-700">${age}</td>
-          <td class="px-5 py-3 font-mono text-center text-slate-700 font-medium">${tglKunj}</td>
-          <td class="px-5 py-3 text-center"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeColor}">${statusDetail}</span></td>
-          <td class="px-5 py-3 font-medium text-slate-800">${rejimen}</td>
-          <td class="px-5 py-3 text-slate-500">${alasan}</td>
-          <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-semibold ${r.is_suppressed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">${vlCat}</span></td>
+          <td class="px-5 py-3 font-bold text-center text-slate-900">${age}</td>
+          <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">${ageGroup}</span></td>
+          <td class="px-5 py-3 font-mono text-center text-slate-600 font-medium text-[11px]">${tglKunj}</td>
+          <td class="px-5 py-3 text-center"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}">${statusDetail}</span></td>
+          <td class="px-5 py-3 font-medium text-slate-800 text-xs">${rejimen}</td>
+          <td class="px-5 py-3 text-slate-500 text-xs">${alasan}</td>
+          <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${r.is_suppressed ? 'bg-emerald-100 text-emerald-800' : (vlCat !== 'Belum Tes VL' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600')}">${vlCat}</span></td>
         `;
         tbody.appendChild(tr);
       });
+
+      // Pagination Information & Controls
+      const pageInfo = document.getElementById('ped-page-info');
+      if (pageInfo) {
+        pageInfo.innerText = `Menampilkan ${startIdx + 1} - ${endIdx} dari ${total.toLocaleString('id-ID')} anak`;
+      }
+
+      const paginationCtr = document.getElementById('ped-pagination-controls');
+      if (paginationCtr) {
+        let pBtns = '';
+        const prevDisabled = curPage === 1;
+        pBtns += `<button onclick="goToPediatricPage(${curPage - 1})" ${prevDisabled ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs ${prevDisabled ? 'opacity-40 cursor-not-allowed bg-slate-100' : 'hover:bg-white bg-white/80 cursor-pointer shadow-2xs'}">‹ Prev</button>`;
+
+        let startP = Math.max(1, curPage - 2);
+        let endP = Math.min(totalPages, curPage + 2);
+        if (curPage <= 3) endP = Math.min(5, totalPages);
+        if (curPage >= totalPages - 2) startP = Math.max(1, totalPages - 4);
+
+        for (let p = startP; p <= endP; p++) {
+          const isAct = p === curPage;
+          pBtns += `<button onclick="goToPediatricPage(${p})" class="px-2.5 py-1 rounded-lg border text-xs font-bold ${isAct ? 'bg-brand-600 text-white border-brand-600 shadow-xs' : 'border-slate-300 bg-white/80 hover:bg-white text-slate-700 cursor-pointer'}">${p}</button>`;
+        }
+
+        const nextDisabled = curPage === totalPages;
+        pBtns += `<button onclick="goToPediatricPage(${curPage + 1})" ${nextDisabled ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs ${nextDisabled ? 'opacity-40 cursor-not-allowed bg-slate-100' : 'hover:bg-white bg-white/80 cursor-pointer shadow-2xs'}">Next ›</button>`;
+        paginationCtr.innerHTML = pBtns;
+      }
+    }
+
+    function exportPediatricExcel() {
+      const params = getPediatricFilterParams();
+      params.append('anonymize', 'false');
+      window.location.href = `/api/export/pediatric?${params.toString()}`;
     }
 
     let chartOutcomeCascade = null;
@@ -3829,93 +4148,6 @@
     let chartPediatricStatus = null;
     let chartPediatricRegimen = null;
 
-    function renderPediatricStatusChart(summary) {
-      const ctxEl = document.getElementById('chart-pediatric-status');
-      if (!ctxEl) return;
-      const ctx = ctxEl.getContext('2d');
-      if (chartPediatricStatus) chartPediatricStatus.destroy();
-
-      chartPediatricStatus = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: [
-            'ODHIV (Terapi ARV)',
-            'Bayi Terpajan (Profilaksis)',
-            'Skrining Non-Reaktif'
-          ],
-          datasets: [{
-            data: [
-              summary.odhiv_terkonfirmasi || 0,
-              summary.bayi_terpajan_profilaksis || 0,
-              summary.skrining_non_reaktif || 0
-            ],
-            backgroundColor: ['#EF4444', '#F59E0B', '#10B981'],
-            borderWidth: 2,
-            borderColor: '#FFFFFF'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
-          },
-          cutout: '60%'
-        }
-      });
-    }
-
-    function renderPediatricRegimenChart(records) {
-      const ctxEl = document.getElementById('chart-pediatric-regimen');
-      if (!ctxEl) return;
-      const ctx = ctxEl.getContext('2d');
-      if (chartPediatricRegimen) chartPediatricRegimen.destroy();
-
-      const regCounts = {};
-      (records || []).forEach(r => {
-        const reg = r.nama_rejimen || 'Profilaksis / Skrining';
-        regCounts[reg] = (regCounts[reg] || 0) + 1;
-      });
-
-      const sortedRegs = Object.entries(regCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 6);
-
-      chartPediatricRegimen = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: sortedRegs.map(r => r[0]),
-          datasets: [{
-            label: 'Jumlah Pasien Anak',
-            data: sortedRegs.map(r => r[1]),
-            backgroundColor: '#3B82F6',
-            borderRadius: 6
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { beginAtZero: true, grid: { color: '#F1F5F9' } },
-            y: { grid: { display: false }, ticks: { font: { size: 10 } } }
-          }
-        }
-      });
-    }
-
-    function renderPediatricDashboard(data) {
-      const summary = data.summary;
-      if (document.getElementById('ped-stat-total')) document.getElementById('ped-stat-total').innerText = (summary.total_anak || 0).toLocaleString('id-ID');
-      if (document.getElementById('ped-stat-odhiv')) document.getElementById('ped-stat-odhiv').innerText = (summary.odhiv_terkonfirmasi || 0).toLocaleString('id-ID');
-      if (document.getElementById('ped-stat-prophylaxis')) document.getElementById('ped-stat-prophylaxis').innerText = (summary.bayi_terpajan_profilaksis || 0).toLocaleString('id-ID');
-      if (document.getElementById('ped-stat-vls')) document.getElementById('ped-stat-vls').innerText = (summary.vls_rate || 100) + '%';
-
-      renderPediatricStatusChart(summary);
-      renderPediatricRegimenChart(data.records);
-      renderPediatricTable(data.records);
-    }
   </script>
 
 </body>
