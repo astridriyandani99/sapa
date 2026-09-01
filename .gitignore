@@ -1,0 +1,52 @@
+# ==============================================================================
+# KEAMANAN DATA MEDIS & PRIVASI PASIEN (UU PDP & HIPAA COMPLIANT)
+# File database lokal dan berkas Excel mentah DILARANG diunggah ke GitHub
+# ==============================================================================
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+data_siha.db
+
+# Raw Medical & Clinical Excel/CSV Files
+*.xlsx
+*.xls
+*.csv
+*.tsv
+DAFTAR PASIEN PENERIMA ARV*.xlsx
+Data Pasien*.xlsx
+Hasil Pemeriksaan Viral Load*.xlsx
+Kunjungan Pasien*.xlsx
+kunjunganfarmasi*.xlsx
+
+# Environment Variables & Secrets (API Keys, Connection Strings)
+.env
+.env.local
+.env.*.local
+*.env
+credentials.json
+
+# Temporary / Scratch & Log Files
+*.log
+*.txt
+uploads/
+tmp/
+temp/
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+dist/
+*.egg-info/
+
+# OS Specific
+.DS_Store
+Thumbs.db

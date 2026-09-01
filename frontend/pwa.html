@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title id="app-page-title">Sahabat Sehat - Pengingat Harian & Edukasi</title>
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#F0FDF4',
+              100: '#DCFCE7',
+              500: '#10B981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065F46',
+              900: '#064E3B'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulse-ring { animation: pulse-ring 3s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex justify-center selection:bg-brand-500 selection:text-white">
+
+  <!-- Mobile Frame Container (Max 430px) -->
+  <div class="w-full max-w-md bg-slate-900 min-h-screen flex flex-col relative shadow-2xl pb-24">
+
+    <!-- ============================================================== -->
+    <!-- 1. ACTIVATION / ONBOARDING SCREEN (Shown if not activated)     -->
+    <!-- ============================================================== -->
+    <div id="screen-activation" class="flex-1 flex flex-col justify-between p-6 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950">
+      <div class="space-y-6 pt-6 text-center">
+        <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-3xl shadow-xl shadow-emerald-500/20">
+          💧
+        </div>
+        <div>
+          <span class="px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 tracking-wider uppercase">
+            Aktivasi Mandiri RSUP Dr. Kariadi
+          </span>
+          <h1 class="text-2xl font-black text-white tracking-tight mt-3">Sahabat Sehat Harian</h1>
+          <p class="text-xs text-slate-300 mt-1 max-w-xs mx-auto">
+            Bantu disiplin minum suplemen harian, pantau hasil lab Anda, dan ikuti studi riset berhadiah resmi.
+          </p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 space-y-4 text-left shadow-lg">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1.5">No. Rekam Medik (No. RM)</label>
+            <input type="text" id="input-act-rm" placeholder="Contoh: D111621" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm font-semibold focus:outline-none focus:border-brand-500 uppercase tracking-wider">
+            <span class="text-[10px] text-slate-400 mt-1 block">Tertera pada kartu berobat RSUP Dr. Kariadi Anda</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1.5">Tanggal Lahir Pasien</label>
+            <input type="date" id="input-act-dob" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-brand-500">
+            <span class="text-[10px] text-slate-400 mt-1 block">Verifikasi identitas kepemilikan rekam medis</span>
+          </div>
+
+          <div id="act-error-box" class="hidden p-3 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium">
+            Pesan error...
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-6 space-y-3">
+        <button onclick="doSelfActivation()" id="btn-do-activation" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 transition duration-150 flex items-center justify-center gap-2">
+          <span>🚀 Aktifkan di HP Saya Sekarang</span>
+        </button>
+        <p class="text-[10px] text-center text-slate-400">
+          🔒 Bebas biaya selamanya & data dilindungi UU Perlindungan Data Pribadi
+        </p>
+      </div>
+    </div>
+
+
+    <!-- ============================================================== -->
+    <!-- 2. MAIN APP CONTAINER (Shown when activated)                   -->
+    <!-- ============================================================== -->
+    <div id="screen-main-app" class="flex-1 flex flex-col hidden">
+
+      <!-- Top Mobile Header -->
+      <header class="p-5 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-lg text-emerald-400">
+            💧
+          </div>
+          <div>
+            <h2 id="header-user-name" class="text-sm font-black text-white leading-none">Halo, Sahabat!</h2>
+            <p id="header-user-status" class="text-[11px] text-slate-400 mt-0.5 font-medium">TLD • RSUP Dr. Kariadi</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Ghost Mode Disguise Button -->
+          <button onclick="toggleGhostMode()" id="btn-ghost-mode" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold transition flex items-center gap-1">
+            <span>🎭</span>
+            <span id="ghost-mode-label">Samarkan</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: BERANDA (HOME & 1-TAP TRACKER) -->
+      <div id="pwa-tab-home" class="p-5 space-y-5 flex-1">
+        
+        <!-- Adherence Streak Banner -->
+        <div class="bg-gradient-to-r from-amber-500/20 via-slate-800 to-slate-800 border border-amber-500/30 p-3.5 rounded-2xl flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🔥</span>
+            <div>
+              <h4 class="text-xs font-bold text-white"><span id="streak-days-count" class="text-amber-400 text-sm font-black">45</span> Hari Disiplin Penuh</h4>
+              <p class="text-[10px] text-slate-300">Daya tahan tubuh & sel imun Anda terlindungi prima</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+            HEBAT! ✨
+          </span>
+        </div>
+
+        <!-- 1-Tap Big Check-in Ring -->
+        <div class="bg-gradient-to-b from-slate-800 to-slate-800/60 border border-slate-700/80 rounded-3xl p-6 text-center space-y-4 shadow-xl">
+          <div class="text-xs text-slate-300 font-medium">Jadwal Minum Suplemen Hari Ini</div>
+          
+          <div class="relative w-44 h-44 mx-auto flex items-center justify-center">
+            <!-- Pulsing outer ring -->
+            <div id="checkin-pulse-ring" class="absolute inset-0 rounded-full border-4 border-emerald-500/30 pulse-ring"></div>
+            
+            <button onclick="doPwaCheckin()" id="btn-big-checkin" class="relative w-36 h-36 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 hover:scale-105 active:scale-95 transition duration-200 text-white flex flex-col items-center justify-center shadow-xl shadow-emerald-500/30 border-4 border-slate-900">
+              <span id="checkin-icon" class="text-3xl mb-1">💊</span>
+              <span id="checkin-text" class="text-xs font-extrabold uppercase tracking-wider">SUDAH MINUM<br>OBAT HARI INI</span>
+            </button>
+          </div>
+
+          <div id="checkin-status-note" class="text-[11px] text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
+            <span>⏱️</span> <span>Ketuk tombol di atas setelah minum obat</span>
+          </div>
+
+          <!-- Lupa Catat Kemarin (Retroactive Button) -->
+          <div class="pt-2 border-t border-slate-700/60 flex items-center justify-center">
+            <button onclick="openRetroactivePrompt()" class="text-[11px] text-slate-400 hover:text-slate-200 underline">
+              Kemarin lupa lapor? Klik untuk catat kemarin
+            </button>
+          </div>
+        </div>
+
+        <!-- Virtual Pillbox (Sisa Obat Dinamis) -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-base">📦</span>
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider">Kotak Obat Pintar (Virtual Pillbox)</h4>
+            </div>
+            <span id="pillbox-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Stok Aman
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/50">
+              <span class="text-[10px] text-slate-400 block font-medium">Sisa Obat di Rumah</span>
+              <span id="pillbox-remaining-pills" class="text-xl font-black text-white">18 Butir</span>
+              <span class="text-[10px] text-slate-500 block">Cukup untuk 18 hari</span>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/50">
+              <span class="text-[10px] text-slate-400 block font-medium">Estimasi Habis</span>
+              <span id="pillbox-depletion-date" class="text-xs font-bold text-amber-400 block mt-1">18 September 2026</span>
+              <span class="text-[10px] text-slate-500 block">Jadwal kontrol rutin</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Native Banner (AdMob-Style In-Feed Card) -->
+        <div id="pwa-home-banner-card" class="bg-gradient-to-r from-indigo-950 via-slate-800 to-slate-800 border border-indigo-500/30 p-4 rounded-2xl space-y-3 shadow-md">
+          <div class="flex items-center justify-between">
+            <span id="pwa-banner-badge" class="px-2 py-0.5 rounded text-[9px] font-extrabold bg-indigo-500/30 text-indigo-300 uppercase tracking-wider border border-indigo-400/30">
+              RISET KEPK BERHADIAH
+            </span>
+            <span class="text-[10px] text-slate-400">RSUP Dr. Kariadi</span>
+          </div>
+          <div class="flex gap-3 items-center">
+            <img id="pwa-banner-img" src="https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?w=400&auto=format&fit=crop&q=60" alt="banner" class="w-16 h-16 rounded-xl object-cover bg-slate-700 shrink-0">
+            <div>
+              <h4 id="pwa-banner-title" class="text-xs font-bold text-white leading-tight">Ikuti Studi Kualitas Hidup & Dapatkan Imbalan Rp 50.000</h4>
+              <p id="pwa-banner-subtitle" class="text-[11px] text-slate-300 mt-1 line-clamp-2">Kuesioner terdaftar resmi di Komite Etik KEPK RSUP Dr. Kariadi</p>
+            </div>
+          </div>
+          <button onclick="handleBannerClick()" id="pwa-banner-btn" class="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1">
+            <span>Ikuti Kuesioner Sekarang →</span>
+          </button>
+        </div>
+
+        <!-- Quick Articles Feed -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">📚 Tips & Edukasi Hari Ini</h4>
+            <button onclick="switchPwaTab('articles')" class="text-xs text-brand-400 font-semibold hover:underline">Lihat Semua</button>
+          </div>
+          <div id="pwa-home-articles-list" class="space-y-2.5">
+            <!-- Dynamic mini articles -->
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- TAB 2: HASIL KESEHATANKU (LAB & U=U TRACKER) -->
+      <div id="pwa-tab-health" class="p-5 space-y-5 flex-1 hidden">
+        <div>
+          <h3 class="text-base font-black text-white">Hasil Laboratorium & Imunitas</h3>
+          <p class="text-xs text-slate-400">Pantau bukti keberhasilan pengobatan ARV Anda</p>
+        </div>
+
+        <!-- Viral Load Status Card -->
+        <div class="bg-gradient-to-br from-emerald-950 via-slate-800 to-slate-900 border border-emerald-500/40 p-5 rounded-3xl space-y-4 shadow-xl">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              VIRAL LOAD TERAKHIR
+            </span>
+            <span id="vl-lab-date" class="text-[10px] text-slate-400 font-mono">Terbaru 2026</span>
+          </div>
+
+          <div class="text-center py-2">
+            <span class="text-3xl font-black text-emerald-400 block tracking-tight">UNDETECTABLE</span>
+            <span class="text-xs font-bold text-slate-300 mt-1 block">&lt;50 kopi/mL (Virus Tidak Terdeteksi)</span>
+          </div>
+
+          <!-- U=U Banner -->
+          <div class="bg-slate-900/80 border border-emerald-500/30 p-3.5 rounded-2xl text-center space-y-1">
+            <div class="text-xs font-black text-emerald-300 flex items-center justify-center gap-1.5">
+              <span>✨</span> <span>STATUS ANDA: U = U (AMAN)</span> <span>✨</span>
+            </div>
+            <p class="text-[11px] text-slate-300">
+              <strong>Tidak Terdeteksi = Tidak Menularkan.</strong> Virus tertidur pulas sehingga tidak dapat menular ke pasangan maupun keluarga Anda.
+            </p>
+          </div>
+        </div>
+
+        <!-- CD4 Imunitas Card -->
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl font-bold">
+              🛡️
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block font-medium uppercase">Kadar Sel Imun CD4</span>
+              <h4 id="cd4-val-text" class="text-lg font-black text-white">650 sel/uL</h4>
+              <span class="text-[10px] text-emerald-400 font-semibold">Kategori Normal & Prima</span>
+            </div>
+          </div>
+          <span class="text-xs font-mono text-slate-500">Kariadi Lab</span>
+        </div>
+
+        <!-- Edukasi Motivasi -->
+        <div class="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1.5 text-xs text-slate-300">
+          <h5 class="font-bold text-white flex items-center gap-1.5">
+            <span>💡</span> Catatan Dokter DPJP RS Kariadi:
+          </h5>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Terus pertahankan jam minum obat Anda setiap hari. Disiplin minum obat adalah perisai utama yang menjaga virus tetap tidak terdeteksi.
+          </p>
+        </div>
+      </div>
+
+
+      <!-- TAB 3: KUESIONER RISET BERHADIAH -->
+      <div id="pwa-tab-surveys" class="p-5 space-y-5 flex-1 hidden">
+        <div>
+          <h3 class="text-base font-black text-white">Kuesioner Penelitian Berhadiah</h3>
+          <p class="text-xs text-slate-400">Bantu kemajuan riset klinis RSUP Dr. Kariadi dan dapatkan uang pengganti pulsa</p>
+        </div>
+
+        <div id="pwa-surveys-list" class="space-y-4">
+          <!-- Dynamic Survey Cards -->
+        </div>
+      </div>
+
+
+      <!-- TAB 4: POJOK EDUKASI (ARTIKEL) -->
+      <div id="pwa-tab-articles" class="p-5 space-y-5 flex-1 hidden">
+        <div>
+          <h3 class="text-base font-black text-white">Pojok Edukasi & Gizi Sehat</h3>
+          <p class="text-xs text-slate-400">Tips kesehatan terpercaya dari tim medis RSUP Dr. Kariadi</p>
+        </div>
+
+        <div id="pwa-full-articles-list" class="space-y-4">
+          <!-- Dynamic Full Articles -->
+        </div>
+      </div>
+
+      <!-- Bottom Navigation Bar (Fixed) -->
+      <nav class="fixed bottom-0 max-w-md w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800 py-2.5 px-6 flex items-center justify-around z-40">
+        <button onclick="switchPwaTab('home')" id="nav-btn-home" class="flex flex-col items-center gap-1 text-brand-400">
+          <span class="text-lg">🏠</span>
+          <span class="text-[10px] font-bold">Beranda</span>
+        </button>
+        <button onclick="switchPwaTab('health')" id="nav-btn-health" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+          <span class="text-lg">🔬</span>
+          <span class="text-[10px] font-medium">Hasil Lab</span>
+        </button>
+        <button onclick="switchPwaTab('surveys')" id="nav-btn-surveys" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200 relative">
+          <span class="text-lg">📋</span>
+          <span class="text-[10px] font-medium">Kuesioner</span>
+          <span class="w-2 h-2 rounded-full bg-amber-400 absolute top-0 right-2"></span>
+        </button>
+        <button onclick="switchPwaTab('articles')" id="nav-btn-articles" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+          <span class="text-lg">📚</span>
+          <span class="text-[10px] font-medium">Edukasi</span>
+        </button>
+      </nav>
+
+    </div>
+
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- MODAL: INFORMED CONSENT & SURVEY FORM                          -->
+  <!-- ============================================================== -->
+  <div id="modal-survey-flow" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-200">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-850">
+        <div>
+          <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">
+            Riset KEPK RS Kariadi
+          </span>
+          <h4 id="survey-modal-title" class="text-sm font-bold text-white mt-1">Kuesioner Penelitian</h4>
+        </div>
+        <button onclick="closeSurveyModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+        
+        <!-- Step 1: Legal Informed Consent -->
+        <div id="survey-step-consent" class="space-y-4">
+          <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-2.5 text-slate-300">
+            <h5 class="font-bold text-white text-xs">LEMBAR PERSETUJUAN (INFORMED CONSENT)</h5>
+            <p id="survey-modal-consent-text" class="text-[11px] leading-relaxed text-slate-300 whitespace-pre-line">
+              Memuat lembar persetujuan...
+            </p>
+          </div>
+
+          <label class="flex items-start gap-2.5 bg-slate-800/40 p-3 rounded-xl border border-slate-700 cursor-pointer">
+            <input type="checkbox" id="check-consent-agree" class="mt-0.5 w-4 h-4 rounded text-brand-500 focus:ring-brand-500 bg-slate-900 border-slate-700">
+            <span class="text-[11px] text-slate-200 font-medium">
+              Saya telah membaca penjelasan di atas, memahami hak saya, dan <strong>SETUJU</strong> berpartisipasi secara sukarela.
+            </span>
+          </label>
+
+          <button onclick="proceedToSurveyQuestions()" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs transition">
+            Lanjut Mengisi Kuesioner →
+          </button>
+        </div>
+
+        <!-- Step 2: Questions Form -->
+        <div id="survey-step-questions" class="space-y-5 hidden">
+          <div id="survey-questions-container" class="space-y-4">
+            <!-- Dynamic questions -->
+          </div>
+
+          <!-- Payout details -->
+          <div class="bg-slate-800/80 p-4 rounded-2xl border border-amber-500/30 space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="text-base">💰</span>
+              <h5 class="font-bold text-white text-xs">Tujuan Transfer Imbalan Pengganti Waktu (Rp 50.000)</h5>
+            </div>
+
+            <div>
+              <label class="block text-[11px] text-slate-300 mb-1">Pilih Saldo E-Wallet / Pulsa / Bank</label>
+              <select id="survey-payout-channel" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold">
+                <option value="DANA">DANA</option>
+                <option value="GOPAY">GoPay</option>
+                <option value="OVO">OVO</option>
+                <option value="SHOPEEPAY">ShopeePay</option>
+                <option value="PULSA">Transfer Pulsa Langsung</option>
+                <option value="BCA">Transfer Bank BCA</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] text-slate-300 mb-1">Nomor Akun / No. HP / No. Rekening</label>
+              <input type="text" id="survey-payout-account" placeholder="Contoh: 081234567890" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold">
+            </div>
+
+            <div>
+              <label class="block text-[11px] text-slate-300 mb-1">Nama Pemilik Akun</label>
+              <input type="text" id="survey-payout-name" placeholder="Contoh: Budi Santoso" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold">
+            </div>
+          </div>
+
+          <button onclick="submitSurveyResponse()" id="btn-submit-survey" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs shadow-lg transition">
+            ✓ Kirim Jawaban Kuesioner
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- CLIENT JAVASCRIPT LOGIC                                        -->
+  <!-- ============================================================== -->
+  <script>
+    // State
+    let activeUserRm = localStorage.getItem('pwa_no_rm') || null;
+    let activeUserToken = localStorage.getItem('pwa_token') || null;
+    let currentPwaTab = 'home';
+    let isGhostMode = localStorage.getItem('pwa_ghost_mode') === 'true';
+    let activeSurveyObj = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      applyGhostMode();
+      if (activeUserRm && activeUserToken) {
+        showMainApp();
+      } else {
+        showActivationScreen();
+      }
+    });
+
+    function showActivationScreen() {
+      document.getElementById('screen-activation').classList.remove('hidden');
+      document.getElementById('screen-main-app').classList.add('hidden');
+    }
+
+    function showMainApp() {
+      document.getElementById('screen-activation').classList.add('hidden');
+      document.getElementById('screen-main-app').classList.remove('hidden');
+      loadPwaData();
+    }
+
+    async function doSelfActivation() {
+      const rm = document.getElementById('input-act-rm').value.trim();
+      const dob = document.getElementById('input-act-dob').value;
+      const errBox = document.getElementById('act-error-box');
+
+      if (!rm || !dob) {
+        errBox.innerText = 'Mohon isi Nomor Rekam Medik dan Tanggal Lahir Anda.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('btn-do-activation');
+        btn.disabled = true;
+        btn.innerText = 'Memverifikasi Data SIMRS...';
+
+        const res = await fetch('/api/pwa/auth/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ no_rekam_medik: rm, tanggal_lahir: dob })
+        });
+
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerText = '🚀 Aktifkan di HP Saya Sekarang';
+
+        if (res.ok && data.success) {
+          activeUserRm = data.no_rekam_medik;
+          activeUserToken = data.token;
+          localStorage.setItem('pwa_no_rm', activeUserRm);
+          localStorage.setItem('pwa_token', activeUserToken);
+          showMainApp();
+        } else {
+          errBox.innerText = data.detail || data.message || 'Data tidak cocok dengan rekam medis RSUP Dr. Kariadi.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (e) {
+        errBox.innerText = 'Terjadi kesalahan koneksi server.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    async function loadPwaData() {
+      if (!activeUserRm) return;
+      try {
+        // 1. Health Summary
+        const sumRes = await fetch(`/api/pwa/health/summary?no_rekam_medik=${encodeURIComponent(activeUserRm)}`);
+        if (sumRes.ok) {
+          const sum = await sumRes.json();
+          renderHealthSummary(sum);
+        }
+
+        // 2. Feed (Banners & Articles)
+        const feedRes = await fetch('/api/pwa/feed');
+        if (feedRes.ok) {
+          const feed = await feedRes.json();
+          renderFeed(feed);
+        }
+
+        // 3. Surveys
+        const survRes = await fetch(`/api/pwa/surveys?no_rekam_medik=${encodeURIComponent(activeUserRm)}`);
+        if (survRes.ok) {
+          const surveys = await survRes.json();
+          renderSurveys(surveys);
+        }
+      } catch (err) {
+        console.error('Error loading PWA data:', err);
+      }
+    }
+
+    function renderHealthSummary(data) {
+      document.getElementById('header-user-name').innerText = `Halo, ${data.nama_pasien}!`;
+      document.getElementById('header-user-status').innerText = `${data.rejimen_arv} • RSUP Dr. Kariadi`;
+      document.getElementById('streak-days-count').innerText = data.adherence_streak;
+
+      // Checkin button state
+      const btnCheckin = document.getElementById('btn-big-checkin');
+      const note = document.getElementById('checkin-status-note');
+      const ring = document.getElementById('checkin-pulse-ring');
+
+      if (data.is_logged_today) {
+        btnCheckin.className = "relative w-36 h-36 rounded-full bg-slate-800 border-4 border-emerald-500 text-emerald-400 flex flex-col items-center justify-center shadow-lg";
+        document.getElementById('checkin-icon').innerText = "✓";
+        document.getElementById('checkin-text').innerHTML = "SUDAH MINUM<br><span class='text-[10px] text-slate-400 font-normal'>" + (data.logged_time || 'Hari ini') + "</span>";
+        note.innerHTML = "<span>✨</span> <span>Kepatuhan Anda tercatat hari ini! Hebat!</span>";
+        ring.classList.remove('pulse-ring');
+      } else {
+        btnCheckin.className = "relative w-36 h-36 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 hover:scale-105 active:scale-95 transition duration-200 text-white flex flex-col items-center justify-center shadow-xl shadow-emerald-500/30 border-4 border-slate-900";
+        document.getElementById('checkin-icon').innerText = "💊";
+        document.getElementById('checkin-text').innerHTML = "SUDAH MINUM<br>OBAT HARI INI";
+        note.innerHTML = "<span>⏱️</span> <span>Ketuk tombol di atas setelah minum obat</span>";
+        ring.classList.add('pulse-ring');
+      }
+
+      // Virtual Pillbox
+      if (data.virtual_pillbox) {
+        document.getElementById('pillbox-remaining-pills').innerText = `${data.virtual_pillbox.remaining_pills} Butir`;
+        document.getElementById('pillbox-depletion-date').innerText = data.virtual_pillbox.estimated_depletion_date;
+      }
+    }
+
+    async function doPwaCheckin() {
+      if (!activeUserRm) return;
+      try {
+        const res = await fetch('/api/pwa/adherence/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ no_rekam_medik: activeUserRm, log_type: 'ON_TIME' })
+        });
+        if (res.ok) {
+          loadPwaData();
+        }
+      } catch (e) {
+        alert('Gagal mencatat log kepatuhan.');
+      }
+    }
+
+    async function openRetroactivePrompt() {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = yesterday.toISOString().split('T')[0];
+
+      if (confirm(`Apakah Anda sudah meminum obat kemarin (${yStr}) namun lupa melapor di aplikasi?`)) {
+        try {
+          const res = await fetch('/api/pwa/adherence/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ no_rekam_medik: activeUserRm, target_date: yStr, log_type: 'RETROACTIVE' })
+          });
+          if (res.ok) {
+            alert('Catatan kepatuhan kemarin berhasil disimpan!');
+            loadPwaData();
+          }
+        } catch (e) {
+          alert('Terjadi kesalahan.');
+        }
+      }
+    }
+
+    function renderFeed(feed) {
+      // 1. Native Banner
+      if (feed.banners && feed.banners.length > 0) {
+        const b = feed.banners[0];
+        document.getElementById('pwa-banner-badge').innerText = b.badge_label;
+        document.getElementById('pwa-banner-title').innerText = b.title;
+        document.getElementById('pwa-banner-subtitle').innerText = b.subtitle || '';
+        if (b.image_url) document.getElementById('pwa-banner-img').src = b.image_url;
+      }
+
+      // 2. Mini Articles in Home
+      const homeArt = document.getElementById('pwa-home-articles-list');
+      const fullArt = document.getElementById('pwa-full-articles-list');
+
+      if (feed.articles && feed.articles.length > 0) {
+        homeArt.innerHTML = feed.articles.slice(0, 2).map(a => `
+          <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/70 flex items-center gap-3">
+            <img src="${a.thumbnail_url || 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=200'}" class="w-14 h-14 rounded-xl object-cover bg-slate-700 shrink-0">
+            <div class="flex-1 min-w-0">
+              <span class="text-[9px] font-bold text-cyan-400 uppercase">${a.category}</span>
+              <h5 class="text-xs font-bold text-white truncate mt-0.5">${a.title}</h5>
+              <p class="text-[10px] text-slate-400">${a.read_time_minutes} mnt baca</p>
+            </div>
+          </div>
+        `).join('');
+
+        fullArt.innerHTML = feed.articles.map(a => `
+          <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl space-y-3">
+            <img src="${a.thumbnail_url || 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=500'}" class="w-full h-36 rounded-xl object-cover bg-slate-700">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 uppercase">${a.category}</span>
+              <h4 class="text-sm font-bold text-white mt-1">${a.title}</h4>
+              <p class="text-[10px] text-slate-400 mt-0.5">${a.author_name} • ${a.read_time_minutes} menit baca</p>
+            </div>
+            <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line pt-2 border-t border-slate-700/60">
+              ${a.content_markdown}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderSurveys(surveys) {
+      const container = document.getElementById('pwa-surveys-list');
+      if (!surveys || surveys.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs bg-slate-800 rounded-2xl">Belum ada kuesioner penelitian baru saat ini.</div>`;
+        return;
+      }
+
+      container.innerHTML = surveys.map(s => {
+        const isDone = s.has_submitted;
+        const statusBadge = isDone 
+          ? (s.submission_status === 'APPROVED' 
+              ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">✅ Imbalan Ditransfer</span>`
+              : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🟡 Dalam Verifikasi</span>`)
+          : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Tersedia</span>`;
+
+        return `
+          <div class="bg-slate-800 border border-slate-700 p-5 rounded-3xl space-y-3 shadow-lg">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-300 uppercase">${s.no_etik_kepk || 'KEPK KARIADI'}</span>
+              ${statusBadge}
+            </div>
+
+            <div>
+              <h4 class="text-sm font-bold text-white">${s.judul_penelitian}</h4>
+              <p class="text-[11px] text-slate-400 mt-1">${s.nama_peneliti} • ${s.questions_count} Pertanyaan Singkat</p>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-700/60 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400 block">Kompensasi Pengganti Waktu:</span>
+                <span class="text-sm font-black text-amber-400">${s.reward_display}</span>
+              </div>
+              <span class="text-[10px] text-slate-400">Transfer Manual</span>
+            </div>
+
+            ${isDone 
+              ? `<div class="text-[11px] text-slate-400 text-center py-1">Anda telah mengirim respon pada ${s.submitted_at}</div>` 
+              : `<button onclick="openSurveyModal('${s.survey_id}')" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs shadow-md transition">
+                   📝 Baca Persetujuan & Mulai Isi
+                 </button>`}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function openSurveyModal(surveyId) {
+      try {
+        const res = await fetch(`/api/pwa/surveys?no_rekam_medik=${encodeURIComponent(activeUserRm)}`);
+        const list = await res.json();
+        activeSurveyObj = list.find(s => s.survey_id === surveyId);
+        if (!activeSurveyObj) return;
+
+        document.getElementById('survey-modal-title').innerText = activeSurveyObj.judul_penelitian;
+        document.getElementById('survey-modal-consent-text').innerText = activeSurveyObj.informed_consent_text;
+        document.getElementById('check-consent-agree').checked = false;
+
+        document.getElementById('survey-step-consent').classList.remove('hidden');
+        document.getElementById('survey-step-questions').classList.add('hidden');
+        document.getElementById('modal-survey-flow').classList.remove('hidden');
+      } catch (e) {
+        alert('Gagal membuka kuesioner.');
+      }
+    }
+
+    function closeSurveyModal() {
+      document.getElementById('modal-survey-flow').classList.add('hidden');
+    }
+
+    function proceedToSurveyQuestions() {
+      if (!document.getElementById('check-consent-agree').checked) {
+        alert('Mohon centang kotak persetujuan Informed Consent untuk melanjutkan.');
+        return;
+      }
+
+      const qContainer = document.getElementById('survey-questions-container');
+      qContainer.innerHTML = activeSurveyObj.questions.map((q, idx) => {
+        if (q.type === 'scale_5' || q.type === 'single_choice') {
+          const opts = q.options || ['1', '2', '3', '4', '5'];
+          return `
+            <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+              <label class="block text-xs font-bold text-white">${idx + 1}. ${q.question}</label>
+              <div class="space-y-1.5 pt-1">
+                ${opts.map(opt => `
+                  <label class="flex items-center gap-2.5 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/60 cursor-pointer hover:bg-slate-900 transition">
+                    <input type="radio" name="ans_${q.id}" value="${opt}" class="text-brand-500 focus:ring-brand-500 bg-slate-800 border-slate-700">
+                    <span class="text-[11px] text-slate-300">${opt}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+              <label class="block text-xs font-bold text-white">${idx + 1}. ${q.question}</label>
+              <textarea id="ans_${q.id}" rows="3" placeholder="Ketik jawaban Anda..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium focus:outline-none focus:border-brand-500"></textarea>
+            </div>
+          `;
+        }
+      }).join('');
+
+      document.getElementById('survey-step-consent').classList.add('hidden');
+      document.getElementById('survey-step-questions').classList.remove('hidden');
+    }
+
+    async function submitSurveyResponse() {
+      const channel = document.getElementById('survey-payout-channel').value;
+      const accNo = document.getElementById('survey-payout-account').value.trim();
+      const accName = document.getElementById('survey-payout-name').value.trim();
+
+      if (!accNo || !accName) {
+        alert('Mohon lengkapi nomor akun rekening/e-wallet dan nama pemilik untuk pencairan imbalan.');
+        return;
+      }
+
+      const answers = {};
+      activeSurveyObj.questions.forEach(q => {
+        if (q.type === 'scale_5' || q.type === 'single_choice') {
+          const sel = document.querySelector(`input[name="ans_${q.id}"]:checked`);
+          answers[q.id] = sel ? sel.value : 'Tidak dijawab';
+        } else {
+          const el = document.getElementById(`ans_${q.id}`);
+          answers[q.id] = el ? el.value : '';
+        }
+      });
+
+      try {
+        const btn = document.getElementById('btn-submit-survey');
+        btn.disabled = true;
+        btn.innerText = 'Mengirim Jawaban...';
+
+        const res = await fetch('/api/pwa/surveys/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            no_rekam_medik: activeUserRm,
+            survey_id: activeSurveyObj.survey_id,
+            answers: answers,
+            payment_channel: channel,
+            payment_account_no: accNo,
+            payment_account_name: accName
+          })
+        });
+
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerText = '✓ Kirim Jawaban Kuesioner';
+
+        if (res.ok && data.success) {
+          alert('Terima kasih! Kuesioner berhasil terkirim secara sah. Tim peneliti akan memverifikasi dan mentransfer imbalan Anda.');
+          closeSurveyModal();
+          loadPwaData();
+          switchPwaTab('surveys');
+        } else {
+          alert(data.detail || data.message || 'Gagal mengirim kuesioner.');
+        }
+      } catch (e) {
+        alert('Terjadi kesalahan koneksi.');
+      }
+    }
+
+    function switchPwaTab(tab) {
+      currentPwaTab = tab;
+      document.getElementById('pwa-tab-home').classList.toggle('hidden', tab !== 'home');
+      document.getElementById('pwa-tab-health').classList.toggle('hidden', tab !== 'health');
+      document.getElementById('pwa-tab-surveys').classList.toggle('hidden', tab !== 'surveys');
+      document.getElementById('pwa-tab-articles').classList.toggle('hidden', tab !== 'articles');
+
+      const tabs = ['home', 'health', 'surveys', 'articles'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`nav-btn-${t}`);
+        if (btn) {
+          if (t === tab) {
+            btn.className = "flex flex-col items-center gap-1 text-brand-400";
+            btn.querySelector('span:last-child').className = "text-[10px] font-bold";
+          } else {
+            btn.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200";
+            btn.querySelector('span:last-child').className = "text-[10px] font-medium";
+          }
+        }
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function handleBannerClick() {
+      switchPwaTab('surveys');
+    }
+
+    function toggleGhostMode() {
+      isGhostMode = !isGhostMode;
+      localStorage.setItem('pwa_ghost_mode', isGhostMode);
+      applyGhostMode();
+    }
+
+    function applyGhostMode() {
+      const title = document.getElementById('app-page-title');
+      const label = document.getElementById('ghost-mode-label');
+      if (isGhostMode) {
+        title.innerText = 'Catatan Harian & Hidrasi Sehat';
+        if (label) label.innerText = 'Mode Biasa';
+      } else {
+        title.innerText = 'Sahabat Sehat - Pengingat Harian & Edukasi';
+        if (label) label.innerText = 'Samarkan';
+      }
+    }
+  </script>
+</body>
+</html>
