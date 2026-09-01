@@ -30,6 +30,7 @@ credentials.json
 # Temporary / Scratch & Log Files
 *.log
 *.txt
+!requirements.txt
 uploads/
 tmp/
 temp/
