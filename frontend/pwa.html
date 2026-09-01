@@ -132,16 +132,26 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
+          <!-- Notification Bell -->
+          <button onclick="openNotificationsModal()" id="btn-pwa-notif" class="relative w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xs transition border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer" title="Pesan & Notifikasi">
+            <span>🔔</span>
+            <span id="pwa-notif-badge" class="hidden absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white border border-white dark:border-slate-900 shadow-xs">0</span>
+          </button>
+
           <!-- Theme Toggle (Light / Dark) -->
           <button onclick="toggleTheme()" id="btn-theme-toggle" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xs transition border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer" title="Ganti Tema">
             <span id="theme-toggle-icon">☀️</span>
           </button>
 
           <!-- Ghost Mode Disguise Button -->
-          <button onclick="toggleGhostMode()" id="btn-ghost-mode" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer">
+          <button onclick="toggleGhostMode()" id="btn-ghost-mode" class="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer" title="Samarkan Tampilan">
             <span id="ghost-mode-icon">🎭</span>
-            <span id="ghost-mode-label">Samarkan</span>
+          </button>
+
+          <!-- Logout Button -->
+          <button onclick="confirmPwaLogout()" id="btn-pwa-logout" class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs transition border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer" title="Keluar / Logout Akun">
+            <span>🚪</span>
           </button>
         </div>
       </header>
@@ -533,6 +543,41 @@
     </div>
   </div>
 
+  <!-- NOTIFICATIONS & MESSAGES INBOX DRAWER MODAL -->
+  <div id="pwa-notifications-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
+    <div class="w-full max-w-md bg-white dark:bg-[#0B0F19] rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[85vh] flex flex-col overflow-hidden animate-slide-up">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/70">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm">🔔</span>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Pesan & Notifikasi Dokter</h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">Pemberitahuan resmi dari klinik PDP RSUP Dr. Kariadi</p>
+          </div>
+        </div>
+        <button onclick="closeNotificationsModal()" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center justify-center text-sm font-bold transition cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <!-- Notification Items List -->
+      <div id="pwa-notif-list-container" class="p-5 overflow-y-auto space-y-3 flex-1 divide-y divide-slate-100 dark:divide-slate-800/80">
+        <!-- Dynamically rendered -->
+        <div class="text-center py-8 text-slate-400 text-xs">Memuat notifikasi...</div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center text-xs">
+        <span class="text-[11px] text-slate-400">Pemberitahuan terenkripsi</span>
+        <button onclick="loadPatientNotifications()" class="text-brand-600 dark:text-brand-400 font-bold hover:underline cursor-pointer">
+          🔄 Segarkan
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="pwa-toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-6 flex items-center gap-2">
     <span class="text-emerald-400 dark:text-emerald-600 text-sm">✨</span>
@@ -716,9 +761,97 @@
           const surveys = await survRes.json();
           renderSurveys(surveys);
         }
+
+        // 4. Notifications Inbox & Alert Badge
+        loadPatientNotifications();
       } catch (err) {
         console.error('Error loading PWA data:', err);
       }
+    }
+
+    function confirmPwaLogout() {
+      if (confirm("Apakah Anda yakin ingin keluar dari sesi akun ini? Anda dapat masuk kembali kapan saja menggunakan No. RM dan Tanggal Lahir.")) {
+        localStorage.removeItem('pwa_user_rm');
+        localStorage.removeItem('pwa_no_rm');
+        localStorage.removeItem('pwa_token');
+        activeUserRm = null;
+        showActivationScreen();
+        showPwaToast("Berhasil keluar dari akun.");
+      }
+    }
+
+    function openNotificationsModal() {
+      document.getElementById('pwa-notifications-modal').classList.remove('hidden');
+      loadPatientNotifications();
+    }
+
+    function closeNotificationsModal() {
+      document.getElementById('pwa-notifications-modal').classList.add('hidden');
+    }
+
+    async function loadPatientNotifications() {
+      if (!activeUserRm) return;
+      const container = document.getElementById('pwa-notif-list-container');
+      const badge = document.getElementById('pwa-notif-badge');
+
+      try {
+        const res = await fetch(`/api/pwa/notifications?no_rekam_medik=${encodeURIComponent(activeUserRm)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Update badge counter
+        if (badge) {
+          if (data.unread_count > 0) {
+            badge.innerText = data.unread_count > 9 ? '9+' : data.unread_count;
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+
+        if (!data.notifications || data.notifications.length === 0) {
+          if (container) container.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">Belum ada pesan atau notifikasi baru dari dokter PDP.</div>`;
+          return;
+        }
+
+        if (container) {
+          container.innerHTML = data.notifications.map(n => `
+            <div class="p-3.5 rounded-2xl ${n.is_read ? 'bg-slate-50 dark:bg-slate-900/60 opacity-80' : 'bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60'} space-y-2 transition">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">${n.icon}</span>
+                  <h5 class="text-xs font-bold text-slate-900 dark:text-white leading-snug">${n.title}</h5>
+                </div>
+                <span class="text-[9px] font-mono text-slate-400 shrink-0">${n.created_at}</span>
+              </div>
+              <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">${n.message}</p>
+              <div class="flex items-center justify-between pt-1 border-t border-slate-200/50 dark:border-slate-800/50 text-[10px]">
+                <span class="text-slate-400 font-medium">Dari: ${n.created_by}</span>
+                ${!n.is_read ? `
+                  <button onclick="markNotificationAsRead('${n.notification_id}')" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer">
+                    ✓ Tandai Dibaca
+                  </button>
+                ` : `<span class="text-slate-400">✓ Sudah Dibaca</span>`}
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error("Gagal memuat notifikasi:", err);
+      }
+    }
+
+    async function markNotificationAsRead(notifId) {
+      try {
+        const res = await fetch('/api/pwa/notifications/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification_id: notifId, no_rekam_medik: activeUserRm })
+        });
+        if (res.ok) {
+          loadPatientNotifications();
+        }
+      } catch (e) {}
     }
 
     function renderHealthSummary(data) {

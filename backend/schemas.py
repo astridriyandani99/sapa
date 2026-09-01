@@ -73,3 +73,19 @@ class LabCD4IngestSchema(BaseModel):
     tanggal_pemeriksaan: str
     nilai_cd4: Optional[float] = None
     kategori_cd4: Optional[str] = None
+
+
+class AdminSendNotificationRequest(BaseModel):
+    title: str
+    message: str
+    target_type: str = "INDIVIDUAL"  # INDIVIDUAL, PRE_LTFU, ALL_PATIENTS, BROADCAST
+    no_rekam_medik: Optional[str] = None
+    category: str = "INFO_MEDIS"  # REMINDER_OBAT, REMINDER_VL, EDUKASI, URGENT, BROADCAST
+    priority: str = "NORMAL"  # LOW, NORMAL, HIGH, URGENT
+    action_link: Optional[str] = "health"
+    created_by: Optional[str] = "Konselor PDP RSUP Dr. Kariadi"
+
+
+class PwaMarkNotificationReadRequest(BaseModel):
+    notification_id: str
+    no_rekam_medik: Optional[str] = None

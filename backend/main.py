@@ -238,8 +238,11 @@ from backend.pwa_service import (
     activate_patient_pwa, verify_patient_session, get_patient_health_summary,
     log_patient_adherence, get_surveys_for_patient, submit_patient_survey,
     get_articles_and_banners, get_admin_pwa_overview, get_admin_pre_ltfu_radar,
-    get_admin_survey_responses, verify_survey_payout, get_admin_adherence_logs_list
+    get_admin_survey_responses, verify_survey_payout, get_admin_adherence_logs_list,
+    send_admin_notification, get_admin_notifications_list, get_patient_notifications,
+    mark_patient_notification_read
 )
+from backend.schemas import AdminSendNotificationRequest, PwaMarkNotificationReadRequest
 
 # Pydantic schemas for PWA
 class PwaActivationRequest(BaseModel):
@@ -390,6 +393,32 @@ def admin_verify_payout(payload: AdminPayoutVerifyRequest, db: Session = Depends
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("message"))
     return res
+
+@app.post("/api/admin/notifications/send")
+def admin_send_notification(payload: AdminSendNotificationRequest, db: Session = Depends(get_db)):
+    return send_admin_notification(
+        db,
+        title=payload.title,
+        message=payload.message,
+        target_type=payload.target_type,
+        no_rekam_medik=payload.no_rekam_medik,
+        category=payload.category,
+        priority=payload.priority,
+        action_link=payload.action_link or "health",
+        created_by=payload.created_by or "Konselor PDP RSUP Dr. Kariadi"
+    )
+
+@app.get("/api/admin/notifications/list")
+def admin_get_notifications(limit: int = Query(100), db: Session = Depends(get_db)):
+    return get_admin_notifications_list(db, limit=limit)
+
+@app.get("/api/pwa/notifications")
+def pwa_get_notifications(no_rekam_medik: str = Query(...), db: Session = Depends(get_db)):
+    return get_patient_notifications(db, no_rekam_medik=no_rekam_medik)
+
+@app.post("/api/pwa/notifications/mark-read")
+def pwa_mark_notification_read(payload: PwaMarkNotificationReadRequest, db: Session = Depends(get_db)):
+    return mark_patient_notification_read(db, notification_id=payload.notification_id, no_rekam_medik=payload.no_rekam_medik)
 
 
 # Route to serve PWA Mobile App directly

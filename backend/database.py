@@ -338,6 +338,24 @@ class AppNativeBanner(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class PatientNotification(Base):
+    __tablename__ = "patient_notifications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    notification_id = Column(String(50), unique=True, index=True, nullable=False)  # e.g. NOTIF-20260901-XXXX
+    target_type = Column(String(30), default="INDIVIDUAL")  # INDIVIDUAL, PRE_LTFU, ALL_PATIENTS, BROADCAST
+    no_rekam_medik = Column(String(50), index=True, nullable=True)  # Specific RM or 'ALL'
+    title = Column(String(150), nullable=False)
+    message = Column(Text, nullable=False)
+    category = Column(String(50), default="INFO_MEDIS")  # REMINDER_OBAT, REMINDER_VL, EDUKASI, URGENT, BROADCAST
+    priority = Column(String(20), default="NORMAL")  # LOW, NORMAL, HIGH, URGENT
+    action_link = Column(String(100), nullable=True)  # e.g. "health", "pillbox", "articles", "surveys"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(100), default="Konselor PDP RSUP Dr. Kariadi")
+    is_read = Column(Boolean, default=False)
+    read_at = Column(DateTime, nullable=True)
+
+
 def seed_initial_pwa_data(db):
     import json
     
@@ -465,6 +483,37 @@ Nomor Kaji Etik: No. 142/EC/KEPK-RSDK/2026 (Komite Etik Penelitian Kesehatan RSU
         ]
         for b in banners:
             db.add(b)
+
+    # 4. Seed Initial Notifications if empty
+    if db.query(PatientNotification).count() == 0:
+        notifs = [
+            PatientNotification(
+                notification_id="NOTIF-INIT-001",
+                target_type="ALL_PATIENTS",
+                no_rekam_medik="ALL",
+                title="Selamat Datang di SAPA Care Mobile",
+                message="Pantau kepatuhan minum obat harian, cek hasil Viral Load & CD4, dan dapatkan edukasi klinis resmi dari tim PDP RSUP Dr. Kariadi.",
+                category="EDUKASI",
+                priority="NORMAL",
+                action_link="health",
+                created_by="Sistem SAPA Care",
+                created_at=datetime.utcnow()
+            ),
+            PatientNotification(
+                notification_id="NOTIF-INIT-002",
+                target_type="ALL_PATIENTS",
+                no_rekam_medik="ALL",
+                title="Pemberitahuan Pelayanan Klinik PDP",
+                message="Layanan pengambilan obat dan konsultasi dokter PDP RSUP Dr. Kariadi tetap buka setiap hari kerja (Senin - Jumat 08.00 - 15.00 WIB).",
+                category="BROADCAST",
+                priority="NORMAL",
+                action_link="articles",
+                created_by="Instalasi Pelayanan PDP",
+                created_at=datetime.utcnow()
+            )
+        ]
+        for n in notifs:
+            db.add(n)
 
     db.commit()
 

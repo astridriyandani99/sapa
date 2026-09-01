@@ -7,7 +7,7 @@ from backend.database import (
     Pasien, Kunjungan, LabViralLoad, LabCD4, SimrsResep,
     PatientDeviceSession, PatientAdherenceLog,
     PatientResearchSurvey, PatientSurveyResponse, PatientResearchPayout,
-    PatientArticle, AppNativeBanner
+    PatientArticle, AppNativeBanner, PatientNotification
 )
 
 
@@ -1009,4 +1009,182 @@ def get_admin_adherence_logs_list(db: Session, target_date: str = None, search: 
             "badge_color": "bg-emerald-100 text-emerald-800 border-emerald-300" if l.log_type == "ON_TIME" else "bg-amber-100 text-amber-800 border-amber-300"
         })
     return result
+
+
+# ============================================================================
+# NOTIFICATION ENGINE SERVICES (ADMIN -> PATIENT PUSH & INBOX)
+# ============================================================================
+
+def send_admin_notification(
+    db: Session,
+    title: str,
+    message: str,
+    target_type: str = "INDIVIDUAL",
+    no_rekam_medik: str = None,
+    category: str = "INFO_MEDIS",
+    priority: str = "NORMAL",
+    action_link: str = "health",
+    created_by: str = "Konselor PDP RSUP Dr. Kariadi"
+):
+    """
+    Dispatches a direct notification to a specific patient, the Pre-LTFU critical group, or a global broadcast.
+    """
+    clean_target = (target_type or "INDIVIDUAL").upper()
+    created_notifs = []
+
+    if clean_target == "PRE_LTFU":
+        # Target active patients with critical drug remaining (<= 2 days)
+        radar_pts = get_admin_pre_ltfu_radar(db, filter_rujukan="aktif_kariadi")
+        rms = list(set(p["no_rekam_medik"] for p in radar_pts if p.get("no_rekam_medik") and p.get("urgency") in ["HIGH", "MEDIUM"]))
+        if not rms:
+            # Fallback if radar is empty
+            rms = ["ALL"]
+
+        for rm in rms:
+            notif = PatientNotification(
+                notification_id=f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+                target_type="PRE_LTFU",
+                no_rekam_medik=rm,
+                title=title or "Pengingat Penting: Stok Obat ARV Menipis",
+                message=message or "Sisa obat ARV Anda menipis. Harap segera mengambil resep ke Poli PDP / Farmasi RSUP Dr. Kariadi untuk mencegah putus obat.",
+                category=category or "REMINDER_OBAT",
+                priority=priority or "HIGH",
+                action_link=action_link or "pillbox",
+                created_by=created_by,
+                created_at=datetime.utcnow()
+            )
+            db.add(notif)
+            created_notifs.append(notif)
+    elif clean_target in ["ALL_PATIENTS", "BROADCAST"]:
+        notif = PatientNotification(
+            notification_id=f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+            target_type="BROADCAST",
+            no_rekam_medik="ALL",
+            title=title or "Pemberitahuan Klinik PDP RSUP Dr. Kariadi",
+            message=message,
+            category=category or "BROADCAST",
+            priority=priority or "NORMAL",
+            action_link=action_link or "articles",
+            created_by=created_by,
+            created_at=datetime.utcnow()
+        )
+        db.add(notif)
+        created_notifs.append(notif)
+    else:
+        # INDIVIDUAL PATIENT
+        clean_rm = (no_rekam_medik or "").strip()
+        if not clean_rm:
+            return {"success": False, "message": "Nomor Rekam Medik wajib diisi untuk target pasien individual."}
+
+        notif = PatientNotification(
+            notification_id=f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+            target_type="INDIVIDUAL",
+            no_rekam_medik=clean_rm,
+            title=title or "Pemberitahuan Khusus Pasien",
+            message=message,
+            category=category or "INFO_MEDIS",
+            priority=priority or "NORMAL",
+            action_link=action_link or "health",
+            created_by=created_by,
+            created_at=datetime.utcnow()
+        )
+        db.add(notif)
+        created_notifs.append(notif)
+
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Berhasil mengirim {len(created_notifs)} notifikasi ke target {clean_target}!",
+        "count": len(created_notifs),
+        "notification_ids": [n.notification_id for n in created_notifs]
+    }
+
+
+def get_admin_notifications_list(db: Session, limit: int = 100):
+    """Returns sent notifications history for hospital admin view"""
+    notifs = db.query(PatientNotification).order_by(desc(PatientNotification.created_at)).limit(limit).all()
+    
+    result = []
+    for n in notifs:
+        result.append({
+            "notification_id": n.notification_id,
+            "target_type": n.target_type,
+            "no_rekam_medik": n.no_rekam_medik or "ALL",
+            "title": n.title,
+            "message": n.message,
+            "category": n.category,
+            "priority": n.priority,
+            "action_link": n.action_link or "health",
+            "created_by": n.created_by,
+            "created_at": n.created_at.strftime("%d/%m/%Y %H:%M WIB") if n.created_at else "-",
+            "is_read": n.is_read
+        })
+    return result
+
+
+def get_patient_notifications(db: Session, no_rekam_medik: str):
+    """Returns active in-app notifications and broadcast alerts for a specific patient"""
+    clean_rm = (no_rekam_medik or "").strip()
+    
+    # Query both individual notifications for this RM and global broadcasts
+    query = db.query(PatientNotification).filter(
+        or_(
+            PatientNotification.no_rekam_medik == clean_rm,
+            PatientNotification.no_rekam_medik == "ALL",
+            PatientNotification.target_type.in_(["ALL_PATIENTS", "BROADCAST"])
+        )
+    ).order_by(desc(PatientNotification.created_at)).limit(50)
+
+    notifs = query.all()
+    unread_count = sum(1 for n in notifs if not n.is_read)
+
+    result = []
+    for n in notifs:
+        # Category icon & badge
+        icon = "🔔"
+        badge_color = "bg-blue-100 text-blue-800 border-blue-200"
+        if n.category == "REMINDER_OBAT":
+            icon = "💊"
+            badge_color = "bg-amber-100 text-amber-800 border-amber-200"
+        elif n.category == "REMINDER_VL":
+            icon = "🔬"
+            badge_color = "bg-emerald-100 text-emerald-800 border-emerald-200"
+        elif n.category == "URGENT":
+            icon = "🚨"
+            badge_color = "bg-rose-100 text-rose-800 border-rose-200"
+        elif n.category == "EDUKASI":
+            icon = "📚"
+            badge_color = "bg-purple-100 text-purple-800 border-purple-200"
+
+        result.append({
+            "notification_id": n.notification_id,
+            "title": n.title,
+            "message": n.message,
+            "category": n.category,
+            "priority": n.priority,
+            "action_link": n.action_link or "health",
+            "icon": icon,
+            "badge_color": badge_color,
+            "created_by": n.created_by,
+            "created_at": n.created_at.strftime("%d %b %Y, %H:%M") if n.created_at else "-",
+            "is_read": n.is_read
+        })
+
+    return {
+        "unread_count": unread_count,
+        "notifications": result
+    }
+
+
+def mark_patient_notification_read(db: Session, notification_id: str, no_rekam_medik: str = None):
+    """Marks an in-app notification as read by patient"""
+    notif = db.query(PatientNotification).filter(PatientNotification.notification_id == notification_id).first()
+    if not notif:
+        return {"success": False, "message": "Notifikasi tidak ditemukan."}
+
+    notif.is_read = True
+    notif.read_at = datetime.utcnow()
+    db.commit()
+    return {"success": True, "message": "Notifikasi ditandai telah dibaca."}
+
 
