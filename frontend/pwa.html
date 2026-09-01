@@ -281,23 +281,11 @@
           </div>
         </div>
 
-      </div>
-
-      </div>
-
-
-      <!-- TAB 2: HASIL KESEHATANKU (LAB & U=U TRACKER) -->
-      <div id="pwa-tab-health" class="p-5 space-y-5 flex-1 hidden">
-        <div>
-          <h3 class="text-base font-black text-white">Hasil Laboratorium & Imunitas</h3>
-          <p class="text-xs text-slate-400">Pantau bukti keberhasilan pengobatan ARV Anda</p>
-        </div>
-
       <!-- TAB 2: HASIL KESEHATANKU (LAB & U=U TRACKER) -->
       <div id="pwa-tab-health" class="p-5 space-y-4 flex-1 hidden">
         <div>
           <h3 class="text-base font-bold text-slate-900 dark:text-white">Hasil Laboratorium & Imunitas</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Bukti ilmiah keberhasilan pengobatan ARV Anda</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Bukti riwayat pemeriksaan medis Anda di RSUP Dr. Kariadi</p>
         </div>
 
         <!-- Viral Load Card -->
@@ -306,20 +294,20 @@
             <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
               VIRAL LOAD TERAKHIR
             </span>
-            <span id="vl-lab-date" class="text-[10px] text-slate-400 font-mono">Terbaru 2026</span>
+            <span id="vl-lab-date" class="text-[10px] text-slate-400 font-mono">-</span>
           </div>
 
           <div class="text-center py-2">
-            <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400 block tracking-tight">UNDETECTABLE</span>
-            <span class="text-xs font-medium text-slate-600 dark:text-slate-300 mt-1 block">&lt;50 kopi/mL (Virus Tidak Terdeteksi)</span>
+            <span id="vl-val-text" class="text-2xl font-black text-emerald-600 dark:text-emerald-400 block tracking-tight">UNDETECTABLE</span>
+            <span id="vl-kategori-text" class="text-xs font-medium text-slate-600 dark:text-slate-300 mt-1 block">&lt;50 kopi/mL (Virus Tidak Terdeteksi)</span>
           </div>
 
           <!-- U=U Banner -->
-          <div class="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-3.5 rounded-xl text-center space-y-1">
-            <div class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1.5">
+          <div id="vl-uu-banner" class="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-3.5 rounded-xl text-center space-y-1">
+            <div id="vl-uu-title" class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1.5">
               <span>🛡️</span> <span>U = U (Undetectable = Untransmittable)</span>
             </div>
-            <p class="text-[11px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
+            <p id="vl-uu-desc" class="text-[11px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
               Kadar virus yang tersupresi penuh berarti virus <strong>TIDAK DAPAT DITULARKAN</strong> kepada pasangan Anda.
             </p>
           </div>
@@ -331,16 +319,16 @@
             <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/60">
               JUMLAH SEL CD4
             </span>
-            <span id="cd4-lab-date" class="text-[10px] text-slate-400 font-mono">Terbaru 2026</span>
+            <span id="cd4-lab-date" class="text-[10px] text-slate-400 font-mono">-</span>
           </div>
 
           <div class="flex items-center justify-between pt-1">
             <div>
-              <span id="cd4-val" class="text-2xl font-black text-cyan-600 dark:text-cyan-400">650</span>
-              <span class="text-xs text-slate-500 dark:text-slate-400">sel/mm³</span>
+              <span id="cd4-val" class="text-2xl font-black text-cyan-600 dark:text-cyan-400">-</span>
+              <span id="cd4-unit" class="text-xs text-slate-500 dark:text-slate-400">sel/mm³</span>
             </div>
-            <span class="px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 text-xs font-semibold">
-              Imunitas Sangat Baik
+            <span id="cd4-kategori-badge" class="px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 text-xs font-semibold">
+              Belum Ada Data
             </span>
           </div>
         </div>
@@ -677,21 +665,32 @@
 
     function renderHealthSummary(data) {
       document.getElementById('header-user-name').innerText = `Halo, ${data.nama_pasien}!`;
-      document.getElementById('header-user-status').innerText = `${data.rejimen_arv} • RSUP Dr. Kariadi`;
+      const statusText = data.status_pasien ? `${data.status_pasien} • ${data.rejimen_arv}` : `${data.rejimen_arv} • RSUP Dr. Kariadi`;
+      document.getElementById('header-user-status').innerText = statusText;
 
       // Checkin button state
       const btnCheckin = document.getElementById('btn-big-checkin');
       const note = document.getElementById('checkin-status-note');
       const ring = document.getElementById('checkin-pulse-ring');
 
-      if (data.is_logged_today) {
+      if (!data.has_active_art) {
+        // Patient is screening / non-ART
+        btnCheckin.className = "relative w-36 h-36 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center cursor-default shadow-xs";
+        btnCheckin.disabled = true;
+        document.getElementById('checkin-icon').innerText = "💧";
+        document.getElementById('checkin-text').innerHTML = "STATUS:<br><span class='text-[10px] font-bold text-slate-700 dark:text-slate-300'>SKRINING SELESAI</span>";
+        note.innerHTML = "<span>ℹ️</span> <span>Pasien skrining / pemeriksaan non-ODHIV. Tidak ada terapi ARV aktif.</span>";
+        if (ring) ring.classList.remove('pulse-ring');
+      } else if (data.is_logged_today) {
         btnCheckin.className = "relative w-36 h-36 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 flex flex-col items-center justify-center cursor-default shadow-xs";
+        btnCheckin.disabled = false;
         document.getElementById('checkin-icon').innerText = "✓";
         document.getElementById('checkin-text').innerHTML = "SUDAH MINUM<br><span class='text-[10px] text-slate-500 dark:text-slate-400 font-normal font-mono'>" + (data.logged_time || 'Hari ini') + "</span>";
         note.innerHTML = "<span>✨</span> <span>Kepatuhan tercatat hari ini! Hebat!</span>";
         if (ring) ring.classList.remove('pulse-ring');
       } else {
         btnCheckin.className = "relative w-36 h-36 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex flex-col items-center justify-center shadow-md shadow-emerald-600/25 transition duration-150 group cursor-pointer border-4 border-slate-100 dark:border-slate-800";
+        btnCheckin.disabled = false;
         document.getElementById('checkin-icon').innerText = "💊";
         document.getElementById('checkin-text').innerHTML = "SUDAH MINUM<br>OBAT HARI INI";
         note.innerHTML = "<span>⏱️</span> <span>Ketuk tombol di atas setelah minum obat</span>";
@@ -737,12 +736,13 @@
 
       // Virtual Pillbox
       if (data.virtual_pillbox) {
-        const remaining = data.virtual_pillbox.remaining_pills;
-        const initial = data.virtual_pillbox.initial_pills || 30;
-        const pct = Math.min(100, Math.round((remaining / initial) * 100));
+        const isAct = data.virtual_pillbox.is_active;
+        const remaining = data.virtual_pillbox.remaining_pills || 0;
+        const initial = data.virtual_pillbox.initial_pills || (isAct ? 30 : 0);
+        const pct = isAct && initial > 0 ? Math.min(100, Math.round((remaining / initial) * 100)) : 0;
 
-        document.getElementById('pillbox-remaining-pills').innerText = `${remaining} Butir`;
-        document.getElementById('pillbox-depletion-date').innerText = data.virtual_pillbox.estimated_depletion_date;
+        document.getElementById('pillbox-remaining-pills').innerText = isAct ? `${remaining} Butir` : `0 Butir`;
+        document.getElementById('pillbox-depletion-date').innerText = data.virtual_pillbox.estimated_depletion_date || '-';
         const pctEl = document.getElementById('pillbox-pct-text');
         if (pctEl) pctEl.innerText = `${pct}%`;
         const barEl = document.getElementById('pillbox-progress-bar');
@@ -750,7 +750,10 @@
 
         const badge = document.getElementById('pillbox-status-badge');
         if (badge) {
-          if (remaining <= 2) {
+          if (!isAct) {
+            badge.className = "px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700";
+            badge.innerText = "Tidak Ada Resep";
+          } else if (remaining <= 2) {
             badge.className = "px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60";
             badge.innerText = "Kritis! Segera Kontrol";
           } else if (remaining <= 7) {
@@ -766,13 +769,42 @@
       // Lab CD4 / VL
       if (data.viral_load) {
         const vlDateEl = document.getElementById('vl-lab-date');
-        if (vlDateEl) vlDateEl.innerText = data.viral_load.tanggal || 'Terbaru 2026';
+        const vlValEl = document.getElementById('vl-val-text');
+        const vlKatEl = document.getElementById('vl-kategori-text');
+        const vlBanner = document.getElementById('vl-uu-banner');
+        const vlDesc = document.getElementById('vl-uu-desc');
+
+        if (vlDateEl) vlDateEl.innerText = data.viral_load.tanggal || '-';
+        if (vlValEl) vlValEl.innerText = data.viral_load.has_record ? (data.viral_load.is_undetectable ? "UNDETECTABLE" : data.viral_load.hasil) : "-";
+        if (vlKatEl) vlKatEl.innerText = data.viral_load.kategori || "Belum ada pemeriksaan";
+
+        if (vlBanner && vlDesc) {
+          if (data.viral_load.has_record && data.viral_load.is_undetectable) {
+            vlBanner.className = "bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-3.5 rounded-xl text-center space-y-1";
+            document.getElementById('vl-uu-title').innerHTML = "<span>🛡️</span> <span>U = U (Undetectable = Untransmittable)</span>";
+            vlDesc.innerHTML = "Kadar virus yang tersupresi penuh berarti virus <strong>TIDAK DAPAT DITULARKAN</strong> kepada pasangan Anda.";
+          } else if (data.viral_load.has_record) {
+            vlBanner.className = "bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3.5 rounded-xl text-center space-y-1";
+            document.getElementById('vl-uu-title').innerHTML = "<span>⚠️</span> <span>Kadar Virus Terdeteksi</span>";
+            vlDesc.innerHTML = "Tingkatkan kepatuhan minum obat setiap hari untuk mencapai kadar virus tidak terdeteksi (Undetectable).";
+          } else {
+            vlBanner.className = "bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl text-center space-y-1";
+            document.getElementById('vl-uu-title').innerHTML = "<span>ℹ️</span> <span>Pemeriksaan Laboratorium</span>";
+            vlDesc.innerHTML = "Pemeriksaan Viral Load dilakukan berkala untuk memantau keberhasilan terapi pengobatan.";
+          }
+        }
       }
+
       if (data.cd4) {
         const cd4ValEl = document.getElementById('cd4-val');
-        if (cd4ValEl) cd4ValEl.innerText = data.cd4.nilai || '650';
         const cd4DateEl = document.getElementById('cd4-lab-date');
-        if (cd4DateEl) cd4DateEl.innerText = data.cd4.tanggal || 'Terbaru 2026';
+        const cd4Badge = document.getElementById('cd4-kategori-badge');
+
+        if (cd4ValEl) cd4ValEl.innerText = data.cd4.has_record ? data.cd4.nilai : "-";
+        if (cd4DateEl) cd4DateEl.innerText = data.cd4.tanggal || "-";
+        if (cd4Badge) {
+          cd4Badge.innerText = data.cd4.has_record ? (data.cd4.kategori || "Pemeriksaan Selesai") : "Belum Ada Data";
+        }
       }
     }
 

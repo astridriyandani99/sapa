@@ -137,21 +137,39 @@ def verify_patient_session(db: Session, token: str):
 # ============================================================================
 
 def get_patient_health_summary(db: Session, no_rekam_medik: str):
-    """Returns today's adherence status, streak, pillbox, and lab results for PWA Home"""
+    """Returns today's adherence status, streak, pillbox, and lab results for PWA Home strictly based on database"""
     clean_rm = no_rekam_medik.strip()
     today_str = date.today().isoformat()
 
-    # 1. Patient profile
+    # 1. Patient profile & Status evaluation
     patient = db.query(Pasien).filter(func.lower(Pasien.no_rekam_medik) == clean_rm.lower()).first()
     nama_display = mask_patient_name(patient.nama_pasien) if patient else "Sahabat Kariadi"
     
-    rejimen_display = "TLD (Tenofovir/Lamivudine/Dolutegravir)"
-    if patient and patient.kunjungan_list:
-        valid_k = [k for k in patient.kunjungan_list if k.tanggal_kunjungan]
-        if valid_k:
-            latest_k = sorted(valid_k, key=lambda x: x.tanggal_kunjungan, reverse=True)
-            if latest_k and latest_k[0].nama_rejimen:
-                rejimen_display = latest_k[0].nama_rejimen
+    is_odhiv = False
+    has_active_art = False
+    rejimen_display = "Tidak Ada Resep ARV (Hanya Skrining/Pemeriksaan)"
+    
+    if patient:
+        is_odhiv = (patient.status_odhiv == 'ODHIV') or bool(patient.tanggal_mulai_art)
+        if patient.kunjungan_list:
+            valid_k = [k for k in patient.kunjungan_list if k.tanggal_kunjungan]
+            if valid_k:
+                latest_k = sorted(valid_k, key=lambda x: x.tanggal_kunjungan, reverse=True)[0]
+                if latest_k and latest_k.nama_rejimen and latest_k.nama_rejimen != 'Tanpa ARV / Belum Ada':
+                    rejimen_display = latest_k.nama_rejimen
+                    has_active_art = True
+
+    # Check SimrsResep for actual pharmacy prescriptions
+    latest_resep = db.query(SimrsResep).filter(
+        func.lower(SimrsResep.no_rekam_medik) == clean_rm.lower()
+    ).order_by(desc(SimrsResep.bill_date)).first()
+
+    if latest_resep and latest_resep.item_code_desc:
+        has_active_art = True
+        if rejimen_display == "Tidak Ada Resep ARV (Hanya Skrining/Pemeriksaan)":
+            rejimen_display = latest_resep.item_code_desc
+
+    status_pasien_display = "Pasien PDP Terapi Aktif" if (is_odhiv or has_active_art) else "Skrining HIV (Non-ODHIV)"
     
     # 2. Check today's adherence log
     today_log = db.query(PatientAdherenceLog).filter(
@@ -177,32 +195,56 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
         streak += 1
         curr_check -= timedelta(days=1)
     
-    # Give base streak for demo/active users
     if streak == 0 and is_logged_today:
         streak = 1
 
     # 4. Virtual Pillbox (Sisa Obat Dinamis)
-    latest_resep = db.query(SimrsResep).filter(
-        func.lower(SimrsResep.no_rekam_medik) == clean_rm.lower()
-    ).order_by(desc(SimrsResep.bill_date)).first()
+    virtual_pillbox = None
+    if has_active_art:
+        initial_pills = 30
+        days_since_refill = 0
+        refill_date_str = None
 
-    initial_pills = 30
-    days_since_refill = 0
-    refill_date_str = None
+        if latest_resep and latest_resep.bill_date:
+            refill_date_str = latest_resep.bill_date
+            initial_pills = int(latest_resep.qty) if latest_resep.qty and latest_resep.qty >= 30 else 30
+            try:
+                r_date = datetime.strptime(normalize_date_str(latest_resep.bill_date), "%Y-%m-%d").date()
+                days_since_refill = (date.today() - r_date).days
+            except Exception:
+                days_since_refill = 0
+        elif patient and patient.kunjungan_list:
+            valid_k = [k for k in patient.kunjungan_list if k.tanggal_kunjungan]
+            if valid_k:
+                latest_k = sorted(valid_k, key=lambda x: x.tanggal_kunjungan, reverse=True)[0]
+                if latest_k.jumlah_hari_arv:
+                    initial_pills = int(latest_k.jumlah_hari_arv)
+                try:
+                    k_date = datetime.strptime(normalize_date_str(latest_k.tanggal_kunjungan), "%Y-%m-%d").date()
+                    days_since_refill = (date.today() - k_date).days
+                except Exception:
+                    days_since_refill = 0
 
-    if latest_resep and latest_resep.bill_date:
-        refill_date_str = latest_resep.bill_date
-        initial_pills = int(latest_resep.qty) if latest_resep.qty and latest_resep.qty >= 30 else 30
-        try:
-            r_date = datetime.strptime(normalize_date_str(latest_resep.bill_date), "%Y-%m-%d").date()
-            days_since_refill = (date.today() - r_date).days
-        except Exception:
-            days_since_refill = 10
+        remaining_pills = max(0, initial_pills - max(0, days_since_refill))
+        estimated_depletion_date = (date.today() + timedelta(days=remaining_pills)).strftime("%d %B %Y")
+        virtual_pillbox = {
+            "is_active": True,
+            "initial_pills": initial_pills,
+            "remaining_pills": remaining_pills,
+            "days_since_refill": max(0, days_since_refill),
+            "refill_date": refill_date_str,
+            "estimated_depletion_date": estimated_depletion_date
+        }
     else:
-        days_since_refill = 12
-
-    remaining_pills = max(0, initial_pills - max(0, days_since_refill))
-    estimated_depletion_date = (date.today() + timedelta(days=remaining_pills)).strftime("%d %B %Y")
+        virtual_pillbox = {
+            "is_active": False,
+            "initial_pills": 0,
+            "remaining_pills": 0,
+            "days_since_refill": 0,
+            "refill_date": None,
+            "estimated_depletion_date": "-",
+            "message": "Tidak ada resep ARV aktif. Pasien tercatat sebagai riwayat skrining/tes."
+        }
 
     # 5. Latest Viral Load & CD4
     latest_vl = None
@@ -212,6 +254,7 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
         if vl_rec:
             is_undet = vl_rec.is_undetectable or "undetectable" in str(vl_rec.kategori_vl).lower() or "tnd" in str(vl_rec.kategori_vl).lower()
             latest_vl = {
+                "has_record": True,
                 "hasil": vl_rec.hasil_numerik or "<50",
                 "kategori": "Undetectable (<50 kopi/mL)" if is_undet else (vl_rec.kategori_vl or "Tersupresi"),
                 "is_undetectable": is_undet,
@@ -222,6 +265,7 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
         cd4_rec = db.query(LabCD4).filter(LabCD4.pasien_id == patient.pasien_id).order_by(desc(LabCD4.tanggal_pemeriksaan)).first()
         if cd4_rec:
             latest_cd4 = {
+                "has_record": True,
                 "nilai": cd4_rec.nilai_cd4,
                 "kategori": cd4_rec.kategori_cd4 or "Baik",
                 "tanggal": cd4_rec.tanggal_pemeriksaan
@@ -229,17 +273,19 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
 
     if not latest_vl:
         latest_vl = {
-            "hasil": "<50",
-            "kategori": "Undetectable (<50 kopi/mL)",
-            "is_undetectable": True,
-            "tanggal": "Terbaru 2026",
-            "u_equals_u": True
+            "has_record": False,
+            "hasil": "-",
+            "kategori": "Belum ada riwayat pemeriksaan Viral Load",
+            "is_undetectable": False,
+            "tanggal": "-",
+            "u_equals_u": False
         }
     if not latest_cd4:
         latest_cd4 = {
-            "nilai": 650,
-            "kategori": "Imunitas Baik (Normal)",
-            "tanggal": "Terbaru 2026"
+            "has_record": False,
+            "nilai": "-",
+            "kategori": "Belum ada riwayat pemeriksaan CD4",
+            "tanggal": "-"
         }
 
     # 6. Past 30 Days Adherence Timeline & Progress Score
@@ -274,14 +320,7 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
             "status": status
         })
 
-    # If active streak exists, fill timeline for realistic patient demo
-    if len(logged_dates_map) == 0 and streak > 0:
-        taken_count = min(30, max(27, streak))
-        for idx in range(len(timeline_30d)):
-            if idx < taken_count:
-                timeline_30d[idx]["status"] = "TAKEN_ON_TIME"
-
-    adherence_rate_pct = round((taken_count / 30) * 100, 1) if taken_count > 0 else (100.0 if is_logged_today else 92.5)
+    adherence_rate_pct = round((taken_count / 30) * 100, 1) if taken_count > 0 else (100.0 if is_logged_today else (0.0 if not has_active_art else 0.0))
 
     # Badges
     badges = [
@@ -311,6 +350,9 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
     return {
         "nama_pasien": nama_display,
         "no_rekam_medik": clean_rm,
+        "status_pasien": status_pasien_display,
+        "is_odhiv": is_odhiv,
+        "has_active_art": has_active_art,
         "rejimen_arv": rejimen_display,
         "is_logged_today": is_logged_today,
         "logged_time": logged_time_str,
@@ -318,13 +360,7 @@ def get_patient_health_summary(db: Session, no_rekam_medik: str):
         "adherence_rate_pct": adherence_rate_pct,
         "timeline_30d": timeline_30d,
         "badges": badges,
-        "virtual_pillbox": {
-            "initial_pills": initial_pills,
-            "remaining_pills": remaining_pills,
-            "estimated_depletion_date": estimated_depletion_date,
-            "is_refill_warning": remaining_pills <= 7,
-            "is_critical": remaining_pills <= 2
-        },
+        "virtual_pillbox": virtual_pillbox,
         "viral_load": latest_vl,
         "cd4": latest_cd4
     }
