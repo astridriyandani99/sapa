@@ -1942,12 +1942,16 @@
       if (btnPwa) btnPwa.className = `px-5 py-3 text-xs border-b-2 flex items-center gap-2 ${tabId === 'pwa' ? activeClass : inactiveClass}`;
       if (btnData) btnData.className = `px-5 py-3 text-xs border-b-2 flex items-center gap-2 ${tabId === 'data' ? activeClass : inactiveClass}`;
 
-      if (tabId === 'pediatric') {
+      if (tabId === 'research') {
+        loadResearchData();
+      } else if (tabId === 'pediatric') {
         loadPediatricData();
       } else if (tabId === 'audit') {
         loadAuditData();
       } else if (tabId === 'pwa') {
         loadAdminPwaData();
+      } else if (tabId === 'exec') {
+        loadExecutiveDashboard(currentPeriodPreset);
       }
     }
 
@@ -2828,6 +2832,10 @@
     }
 
     async function loadResearchData() {
+      const gridBody = document.getElementById('research-table-body');
+      if (gridBody) {
+        gridBody.innerHTML = `<tr><td colspan="16" class="px-5 py-6 text-center text-slate-500"><div class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span><span>Memuat & memfilter data kohor...</span></div></td></tr>`;
+      }
       const payload = getFilterPayload();
       try {
         const res = await fetch('/api/dashboard/research', {
@@ -2835,10 +2843,16 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        }
         researchData = await res.json();
         renderResearchView(researchData);
       } catch (err) {
         console.error("Research load error:", err);
+        if (gridBody) {
+          gridBody.innerHTML = `<tr><td colspan="16" class="px-5 py-6 text-center text-rose-500 font-medium">Gagal memuat data kohor. Silakan periksa koneksi atau coba reset filter.</td></tr>`;
+        }
       }
     }
 

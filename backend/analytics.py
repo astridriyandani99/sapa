@@ -909,25 +909,26 @@ def get_research_cohort_data(db: Session, filters: dict):
             if src and src != "-":
                 referral_sources[src] = referral_sources.get(src, 0) + 1
 
-    top_referral_sources = [{"facility": f, "count": c} for f, c in sorted(referral_sources.items(), key=lambda x: x[1], reverse=True)[:10]]
+    summary = {
+        "total_matched": total_matched,
+        "avg_age": avg_age,
+        "tested_vl_count": tested_vl_count,
+        "suppressed_count": suppressed_count,
+        "vls_rate": vls_rate,
+        "vls_percentage": vls_rate,
+        "active_on_art_count": active_on_art_count,
+        "ltfu_count": ltfu_count,
+        "meninggal_count": meninggal_count,
+        "rujuk_keluar_count": rujuk_keluar_count,
+        "rujuk_masuk_count": rujuk_masuk_count,
+        "pediatric_count": pediatric_count,
+        "pediatric_suppressed_rate": ped_vls_rate,
+        "mmd_count": mmd_count,
+        "hamil_count": hamil_count
+    }
 
     return {
-        "summary": {
-            "total_matched": total_matched,
-            "avg_age": avg_age,
-            "tested_vl_count": tested_vl_count,
-            "suppressed_count": suppressed_count,
-            "vls_rate": vls_rate,
-            "active_on_art_count": active_on_art_count,
-            "ltfu_count": ltfu_count,
-            "meninggal_count": meninggal_count,
-            "rujuk_keluar_count": rujuk_keluar_count,
-            "rujuk_masuk_count": rujuk_masuk_count,
-            "pediatric_count": pediatric_count,
-            "pediatric_suppressed_rate": ped_vls_rate,
-            "mmd_count": mmd_count,
-            "hamil_count": hamil_count
-        },
+        "summary": summary,
         "top_referral_sources": top_referral_sources,
         "regimen_crosstab": sorted(regimen_crosstab, key=lambda x: x["total_pasien"], reverse=True),
         "duration_crosstab": duration_crosstab,
