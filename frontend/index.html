@@ -2115,14 +2115,16 @@
 
     // On Load
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('print-date').innerText = 'Dicetak pada: ' + new Date().toLocaleString('id-ID');
-      setupGlobalDragDrop();
-      loadSystemStatus();
-      loadExecutiveDashboard(currentPeriodPreset);
-      loadResearchData();
-      loadPediatricData();
-      loadUploadHistory();
-      loadAdminPwaData();
+      const printDateEl = document.getElementById('print-date');
+      if (printDateEl) printDateEl.innerText = 'Dicetak pada: ' + new Date().toLocaleString('id-ID');
+
+      try { setupGlobalDragDrop(); } catch (e) { console.error('setupGlobalDragDrop error:', e); }
+      try { loadSystemStatus(); } catch (e) { console.error('loadSystemStatus error:', e); }
+      try { loadExecutiveDashboard(currentPeriodPreset); } catch (e) { console.error('loadExecutiveDashboard error:', e); }
+      try { loadResearchData(); } catch (e) { console.error('loadResearchData error:', e); }
+      try { loadPediatricData(); } catch (e) { console.error('loadPediatricData error:', e); }
+      try { loadUploadHistory(); } catch (e) { console.error('loadUploadHistory error:', e); }
+      try { loadAdminPwaData(); } catch (e) { console.error('loadAdminPwaData error:', e); }
     });
 
     // Helper: Number Counter Animation
@@ -4498,13 +4500,6 @@
 
       ctrEl.innerHTML = html;
     }
-
-    // ==========================================
-    // PEDIATRIC & PPIA CHART RENDERING
-    // ==========================================
-    let chartPediatricStatus = null;
-    let chartPediatricRegimen = null;
-
   </script>
 
 </body>
