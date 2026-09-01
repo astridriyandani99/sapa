@@ -237,22 +237,55 @@
           </div>
         </div>
 
-        <!-- Dynamic Native Banner (AdMob-Style In-Feed Card) -->
-        <div id="pwa-home-banner-card" class="bg-gradient-to-r from-indigo-950 via-slate-800 to-slate-800 border border-indigo-500/30 p-4 rounded-2xl space-y-3 shadow-md">
+        <!-- 30-Day Adherence Matrix & Gamification Progress -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 space-y-4 shadow-lg">
           <div class="flex items-center justify-between">
-            <span id="pwa-banner-badge" class="px-2 py-0.5 rounded text-[9px] font-extrabold bg-indigo-500/30 text-indigo-300 uppercase tracking-wider border border-indigo-400/30">
+            <div class="flex items-center gap-2">
+              <span class="text-base">📅</span>
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider">Histori Kepatuhan 30 Hari</h4>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400">Skor:</span>
+              <span id="patient-score-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">96.7%</span>
+            </div>
+          </div>
+
+          <!-- 30-Day Dot Grid -->
+          <div id="adherence-30d-grid" class="grid grid-cols-10 gap-1.5 p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+            <!-- 30 daily dots dynamically rendered -->
+          </div>
+
+          <div class="flex items-center justify-between text-[10px] text-slate-400 px-1">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Minum Tepat</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Susulan</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-700"></span> Belum / Lewat</span>
+          </div>
+
+          <!-- Badges Section -->
+          <div class="pt-2 border-t border-slate-800/70 space-y-2">
+            <h5 class="text-[11px] font-bold text-slate-300">Pencapaian & Medali Disiplin</h5>
+            <div id="patient-badges-container" class="grid grid-cols-3 gap-2">
+              <!-- Render badges -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Native Banner (AdMob-Style In-Feed Card) -->
+        <div id="pwa-home-banner-card" class="bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border border-indigo-500/30 p-4.5 rounded-3xl space-y-3 shadow-lg shadow-indigo-950/30">
+          <div class="flex items-center justify-between">
+            <span id="pwa-banner-badge" class="px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-indigo-500/30 text-indigo-300 uppercase tracking-wider border border-indigo-400/30">
               RISET KEPK BERHADIAH
             </span>
             <span class="text-[10px] text-slate-400">RSUP Dr. Kariadi</span>
           </div>
           <div class="flex gap-3 items-center">
-            <img id="pwa-banner-img" src="https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?w=400&auto=format&fit=crop&q=60" alt="banner" class="w-16 h-16 rounded-xl object-cover bg-slate-700 shrink-0">
+            <img id="pwa-banner-img" src="https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?w=400&auto=format&fit=crop&q=60" alt="banner" class="w-16 h-16 rounded-2xl object-cover bg-slate-800 shrink-0 border border-slate-700">
             <div>
               <h4 id="pwa-banner-title" class="text-xs font-bold text-white leading-tight">Ikuti Studi Kualitas Hidup & Dapatkan Imbalan Rp 50.000</h4>
               <p id="pwa-banner-subtitle" class="text-[11px] text-slate-300 mt-1 line-clamp-2">Kuesioner terdaftar resmi di Komite Etik KEPK RSUP Dr. Kariadi</p>
             </div>
           </div>
-          <button onclick="handleBannerClick()" id="pwa-banner-btn" class="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1">
+          <button onclick="handleBannerClick()" id="pwa-banner-btn" class="w-full py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
             <span>Ikuti Kuesioner Sekarang →</span>
           </button>
         </div>
@@ -696,6 +729,43 @@
             badge.innerText = "Stok Aman";
           }
         }
+      }
+
+      // Adherence Rate & 30-Day Grid
+      const scoreBadge = document.getElementById('patient-score-badge');
+      if (scoreBadge && data.adherence_rate_pct !== undefined) {
+        scoreBadge.innerText = `${data.adherence_rate_pct}%`;
+      }
+
+      const gridEl = document.getElementById('adherence-30d-grid');
+      if (gridEl && data.timeline_30d) {
+        gridEl.innerHTML = data.timeline_30d.map(d => {
+          let bg = 'bg-slate-800 border-slate-700/50 text-slate-500';
+          let title = `${d.date}: Belum / Lewat`;
+          if (d.status === 'TAKEN_ON_TIME') {
+            bg = 'bg-emerald-500/25 border-emerald-500/50 text-emerald-300 shadow-2xs font-bold';
+            title = `${d.date}: Minum Tepat Waktu`;
+          } else if (d.status === 'TAKEN_RETROACTIVE') {
+            bg = 'bg-amber-500/25 border-amber-500/50 text-amber-300 font-bold';
+            title = `${d.date}: Lapor Susulan`;
+          } else if (d.status === 'PENDING_TODAY') {
+            bg = 'bg-emerald-500/10 border-dashed border-emerald-500/40 text-emerald-400 animate-pulse';
+            title = `${d.date}: Jadwal Hari Ini`;
+          }
+          return `<div class="w-full aspect-square rounded-lg border flex flex-col items-center justify-center text-[9px] ${bg} cursor-help transition-transform hover:scale-110" title="${title}"><span>${d.day_num}</span></div>`;
+        }).join('');
+      }
+
+      // Achievement Badges
+      const badgesEl = document.getElementById('patient-badges-container');
+      if (badgesEl && data.badges) {
+        badgesEl.innerHTML = data.badges.map(b => `
+          <div class="p-2.5 rounded-2xl border text-center transition ${b.unlocked ? 'bg-slate-900/90 border-emerald-500/30 shadow-2xs' : 'bg-slate-950/40 border-slate-800/40 opacity-40'}">
+            <span class="text-xl block mb-0.5">${b.icon}</span>
+            <h6 class="text-[10px] font-black text-white leading-tight truncate">${b.title}</h6>
+            <span class="text-[8px] ${b.unlocked ? 'text-emerald-400 font-bold' : 'text-slate-500'} block mt-0.5">${b.unlocked ? 'Terbuka' : 'Terkunci'}</span>
+          </div>
+        `).join('');
       }
     }
 

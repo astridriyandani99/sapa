@@ -212,7 +212,7 @@ from backend.pwa_service import (
     activate_patient_pwa, verify_patient_session, get_patient_health_summary,
     log_patient_adherence, get_surveys_for_patient, submit_patient_survey,
     get_articles_and_banners, get_admin_pwa_overview, get_admin_pre_ltfu_radar,
-    get_admin_survey_responses, verify_survey_payout
+    get_admin_survey_responses, verify_survey_payout, get_admin_adherence_logs_list
 )
 
 # Pydantic schemas for PWA
@@ -342,6 +342,14 @@ def admin_get_pre_ltfu_radar(filter_rujukan: str = Query("all"), db: Session = D
 @app.get("/api/admin/pwa/surveys")
 def admin_get_surveys(survey_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     return get_admin_survey_responses(db, survey_id=survey_id)
+
+@app.get("/api/admin/pwa/adherence-logs")
+def admin_get_adherence_logs(
+    target_date: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return get_admin_adherence_logs_list(db, target_date=target_date, search=search)
 
 @app.post("/api/admin/pwa/surveys/payout/verify")
 def admin_verify_payout(payload: AdminPayoutVerifyRequest, db: Session = Depends(get_db)):
