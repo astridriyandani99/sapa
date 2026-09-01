@@ -1273,6 +1273,27 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Modern High-Speed Pagination Bar -->
+        <div class="px-5 py-3.5 bg-slate-50/80 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div class="flex items-center gap-3">
+            <span id="audit-pagination-info" class="font-medium text-slate-700">Menampilkan 0-0 dari 0 transaksi</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-500">Tampilkan:</span>
+              <select id="audit-page-size" onchange="changeAuditPageSize(this.value)" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 outline-none focus:border-brand-500 cursor-pointer shadow-2xs">
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+              </select>
+              <span class="text-slate-500">per halaman</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-1" id="audit-pagination-controls">
+            <!-- Dynamically generated page buttons -->
+          </div>
+        </div>
       </div>
 
     </div>
@@ -3435,10 +3456,14 @@
     }
 
     let currentAuditFilterType = 'all';
+    let auditCurrentPage = 1;
+    let auditPageSize = 25;
+    let currentFilteredAuditRecords = [];
 
     function filterAuditList(type) {
       if (!auditDataCache || !auditDataCache.records) return;
       currentAuditFilterType = type;
+      auditCurrentPage = 1; // Reset to page 1 on filter switch
 
       const btnAll = document.getElementById('btn-audit-all');
       const btnMatch = document.getElementById('btn-audit-match');
@@ -3462,18 +3487,59 @@
       } else if (type === 'match') {
         recs = auditDataCache.matched_records || recs.filter(r => r.is_in_siha);
       }
+      currentFilteredAuditRecords = recs;
       renderAuditTable(recs);
+    }
+
+    function changeAuditPageSize(newSize) {
+      auditPageSize = parseInt(newSize, 10) || 25;
+      auditCurrentPage = 1;
+      renderAuditTable(currentFilteredAuditRecords);
+    }
+
+    function goToAuditPage(pageNum) {
+      const totalPages = Math.ceil((currentFilteredAuditRecords.length || 0) / auditPageSize) || 1;
+      if (pageNum < 1 || pageNum > totalPages) return;
+      auditCurrentPage = pageNum;
+      renderAuditTable(currentFilteredAuditRecords);
     }
 
     function renderAuditTable(records) {
       const tbody = document.getElementById('audit-table-body');
       if (!tbody) return;
+      currentFilteredAuditRecords = records || [];
+
+      const totalItems = currentFilteredAuditRecords.length;
+      const totalPages = Math.ceil(totalItems / auditPageSize) || 1;
+      if (auditCurrentPage > totalPages) auditCurrentPage = totalPages;
+      if (auditCurrentPage < 1) auditCurrentPage = 1;
+
+      const startIndex = (auditCurrentPage - 1) * auditPageSize;
+      const endIndex = Math.min(startIndex + auditPageSize, totalItems);
+      const pageRecords = currentFilteredAuditRecords.slice(startIndex, endIndex);
+
+      // 1. Update Pagination Info Text
+      const infoEl = document.getElementById('audit-pagination-info');
+      if (infoEl) {
+        if (totalItems === 0) {
+          infoEl.innerText = "Tidak ada transaksi ditemukan";
+        } else {
+          infoEl.innerText = `Menampilkan ${(startIndex + 1).toLocaleString('id-ID')} - ${endIndex.toLocaleString('id-ID')} dari ${totalItems.toLocaleString('id-ID')} transaksi`;
+        }
+      }
+
+      // 2. Render Page Buttons
+      renderAuditPaginationButtons(totalPages, auditCurrentPage);
+
+      // 3. Render Table Rows (Ultra-Fast 25-50 rows only)
       tbody.innerHTML = '';
-      if (!records || records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400">Tidak ada data resep yang sesuai kategori audit ini.</td></tr>`;
+      if (!pageRecords || pageRecords.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400">Tidak ada data resep yang sesuai kriteria audit ini.</td></tr>`;
         return;
       }
-      records.forEach(r => {
+
+      const rowsFragment = document.createDocumentFragment();
+      pageRecords.forEach(r => {
         const bill = r.bill_number || '-';
         const billDate = r.bill_date || '-';
         const rm = r.no_rekam_medik || '-';
@@ -3516,8 +3582,52 @@
           <td class="px-5 py-3 font-medium text-slate-700">${doc}</td>
           <td class="px-5 py-3 text-center"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeColor}">${statusText}</span></td>
         `;
-        tbody.appendChild(tr);
+        rowsFragment.appendChild(tr);
       });
+      tbody.appendChild(rowsFragment);
+    }
+
+    function renderAuditPaginationButtons(totalPages, currentPage) {
+      const ctrEl = document.getElementById('audit-pagination-controls');
+      if (!ctrEl) return;
+      if (totalPages <= 1) {
+        ctrEl.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      // Prev Button
+      const prevDisabled = currentPage === 1;
+      html += `<button onclick="goToAuditPage(${currentPage - 1})" ${prevDisabled ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs ${prevDisabled ? 'opacity-40 cursor-not-allowed bg-slate-100' : 'hover:bg-white bg-white/80 cursor-pointer shadow-2xs'}">‹ Prev</button>`;
+
+      // Page numbers (smart sliding window)
+      let pages = [];
+      if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        if (currentPage > 3) pages.push('...');
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (currentPage < totalPages - 2) pages.push('...');
+        pages.push(totalPages);
+      }
+
+      pages.forEach(p => {
+        if (p === '...') {
+          html += `<span class="px-2 py-1 text-slate-400 font-semibold text-xs">...</span>`;
+        } else {
+          const isActive = p === currentPage;
+          html += `<button onclick="goToAuditPage(${p})" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${isActive ? 'bg-brand-600 text-white shadow-2xs' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer'}">${p}</button>`;
+        }
+      });
+
+      // Next Button
+      const nextDisabled = currentPage === totalPages;
+      html += `<button onclick="goToAuditPage(${currentPage + 1})" ${nextDisabled ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs ${nextDisabled ? 'opacity-40 cursor-not-allowed bg-slate-100' : 'hover:bg-white bg-white/80 cursor-pointer shadow-2xs'}">Next ›</button>`;
+
+      ctrEl.innerHTML = html;
     }
 
     // ==========================================
