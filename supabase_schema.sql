@@ -1,8 +1,9 @@
 -- ============================================================================
--- SKEMA BERSIH & MUTAKHIR SUPABASE POSTGRESQL (SIHA, SIMRS & PWA PASIEN)
+-- SKEMA RESMI & 100% SINKRON DENGAN MODEL BACKEND (FASTAPI + POSTGRESQL)
+-- Salin dan jalankan skrip ini di: Supabase Dashboard -> SQL Editor -> Run
 -- ============================================================================
 
--- Hapus tabel lama jika ada agar struktur 100% sinkron dan bersih
+-- 1. Bersihkan tabel lama agar tidak terjadi konflik kolom
 DROP TABLE IF EXISTS patient_research_payouts CASCADE;
 DROP TABLE IF EXISTS patient_survey_responses CASCADE;
 DROP TABLE IF EXISTS patient_research_surveys CASCADE;
@@ -17,7 +18,7 @@ DROP TABLE IF EXISTS lab_viral_load CASCADE;
 DROP TABLE IF EXISTS kunjungan CASCADE;
 DROP TABLE IF EXISTS pasien CASCADE;
 
--- 1. Tabel Master Pasien
+-- 2. Tabel Master Pasien
 CREATE TABLE pasien (
     pasien_id VARCHAR(50) PRIMARY KEY,
     no_rekam_medik VARCHAR(50),
@@ -31,7 +32,7 @@ CREATE TABLE pasien (
     jenis_kelamin VARCHAR(30),
     pekerjaan VARCHAR(100),
     suku VARCHAR(50),
-    warga_negara VARCHAR(50),
+    warga_negara VARCHAR(20) DEFAULT 'WNI',
     alamat_provinsi VARCHAR(100),
     alamat_kabupaten VARCHAR(100),
     alamat_kecamatan VARCHAR(100),
@@ -64,56 +65,55 @@ CREATE TABLE pasien (
 );
 
 CREATE INDEX idx_pasien_rm ON pasien(no_rekam_medik);
+CREATE INDEX idx_pasien_reg ON pasien(no_reg_nas);
 CREATE INDEX idx_pasien_gender ON pasien(jenis_kelamin);
 CREATE INDEX idx_pasien_status ON pasien(status_odhiv_pdp);
+CREATE INDEX idx_pasien_populasi ON pasien(kelompok_populasi);
 
--- 2. Tabel Kunjungan Pasien
+-- 3. Tabel Kunjungan Pasien
 CREATE TABLE kunjungan (
     id SERIAL PRIMARY KEY,
     pasien_id VARCHAR(50) NOT NULL REFERENCES pasien(pasien_id) ON DELETE CASCADE,
     no_rekam_medik VARCHAR(50),
+    no_reg_nas VARCHAR(50),
     tanggal_kunjungan VARCHAR(50) NOT NULL,
-    alasan_kunjungan VARCHAR(100),
+    nama_upk VARCHAR(150),
+    upk_asal VARCHAR(150),
+    alasan_kunjungan VARCHAR(150),
+    jenis_layanan VARCHAR(100),
     berat_badan FLOAT,
     tinggi_badan FLOAT,
     imt FLOAT,
-    status_imt VARCHAR(50),
-    tekanan_darah VARCHAR(30),
-    status_kehamilan VARCHAR(50),
-    tgl_melahirkan VARCHAR(50),
-    metode_kb VARCHAR(100),
+    kategori_imt VARCHAR(50),
+    status_kawin VARCHAR(50),
+    status_hamil VARCHAR(50),
+    status_odhiv VARCHAR(50),
+    status_odhiv_pdp VARCHAR(100),
     stadium_klinis VARCHAR(50),
-    status_fungsional VARCHAR(50),
     nama_rejimen VARCHAR(150),
-    kategori_rejimen VARCHAR(100),
-    paduan_pengobatan VARCHAR(100),
+    kategori_rejimen VARCHAR(50),
     jumlah_hari_arv INTEGER,
-    sisa_hari_arv INTEGER,
-    kepatuhan_art VARCHAR(50),
-    efek_samping_arv TEXT,
-    tanggal_rencana_kunjungan VARCHAR(50),
-    afu_otomatis VARCHAR(50),
-    profilaksis_kotrimoksazol VARCHAR(100),
-    profilaksis_tpt VARCHAR(100),
-    skrining_tb VARCHAR(100),
-    hasil_tb VARCHAR(100),
-    infeksi_oportunistik TEXT,
+    akhir_follow_up VARCHAR(50),
+    status_keterlambatan VARCHAR(50),
+    tanggal_dirujuk VARCHAR(50),
+    lembaga_pendamping VARCHAR(150),
     batch_id VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_kunjungan_tgl ON kunjungan(tanggal_kunjungan);
 CREATE INDEX idx_kunjungan_rej ON kunjungan(nama_rejimen);
+CREATE INDEX idx_kunjungan_alasan ON kunjungan(alasan_kunjungan);
+CREATE INDEX idx_kunjungan_stadium ON kunjungan(stadium_klinis);
 
--- 3. Tabel Laboratorium Viral Load
+-- 4. Tabel Laboratorium Viral Load
 CREATE TABLE lab_viral_load (
     id SERIAL PRIMARY KEY,
     pasien_id VARCHAR(50) NOT NULL REFERENCES pasien(pasien_id) ON DELETE CASCADE,
-    no_rekam_medik VARCHAR(50),
+    no_order VARCHAR(100),
     tanggal_pemeriksaan VARCHAR(50) NOT NULL,
     upk_asal VARCHAR(150),
-    no_order VARCHAR(100),
-    hasil_raw VARCHAR(150),
+    hasil_raw VARCHAR(100),
     hasil_numerik FLOAT,
     kategori_vl VARCHAR(100),
     is_suppressed BOOLEAN DEFAULT FALSE,
@@ -129,8 +129,10 @@ CREATE TABLE lab_viral_load (
 
 CREATE INDEX idx_vl_tgl ON lab_viral_load(tanggal_pemeriksaan);
 CREATE INDEX idx_vl_kat ON lab_viral_load(kategori_vl);
+CREATE INDEX idx_vl_supp ON lab_viral_load(is_suppressed);
+CREATE INDEX idx_vl_undet ON lab_viral_load(is_undetectable);
 
--- 4. Tabel Laboratorium CD4
+-- 5. Tabel Laboratorium CD4
 CREATE TABLE lab_cd4 (
     id SERIAL PRIMARY KEY,
     pasien_id VARCHAR(50) NOT NULL REFERENCES pasien(pasien_id) ON DELETE CASCADE,
@@ -144,7 +146,10 @@ CREATE TABLE lab_cd4 (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Tabel Resep Farmasi SIMRS
+CREATE INDEX idx_cd4_tgl ON lab_cd4(tanggal_pemeriksaan);
+CREATE INDEX idx_cd4_kat ON lab_cd4(kategori_cd4);
+
+-- 6. Tabel Resep Farmasi SIMRS
 CREATE TABLE simrs_resep (
     id SERIAL PRIMARY KEY,
     bill_number VARCHAR(100),
@@ -165,8 +170,10 @@ CREATE TABLE simrs_resep (
 
 CREATE INDEX idx_simrs_rm ON simrs_resep(no_rekam_medik);
 CREATE INDEX idx_simrs_date ON simrs_resep(bill_date);
+CREATE INDEX idx_simrs_item ON simrs_resep(item_code_desc);
+CREATE INDEX idx_simrs_doc ON simrs_resep(nama_dokter);
 
--- 6. Tabel Riwayat Upload Berkas
+-- 7. Tabel Riwayat Upload Berkas
 CREATE TABLE upload_history (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
@@ -179,9 +186,9 @@ CREATE TABLE upload_history (
     details TEXT
 );
 
--- 7. Tabel Sesi Perangkat PWA Pasien
+-- 8. Tabel Sesi Perangkat PWA Pasien
 CREATE TABLE patient_device_sessions (
-    session_id VARCHAR(100) PRIMARY KEY,
+    session_id VARCHAR(50) PRIMARY KEY,
     no_rekam_medik VARCHAR(50) NOT NULL,
     device_token VARCHAR(255) UNIQUE NOT NULL,
     pin_hash VARCHAR(255),
@@ -193,11 +200,11 @@ CREATE TABLE patient_device_sessions (
 
 CREATE INDEX idx_pwa_session_rm ON patient_device_sessions(no_rekam_medik);
 
--- 8. Tabel Log Kepatuhan Minum Obat Harian
+-- 9. Tabel Log Kepatuhan Minum Obat Harian
 CREATE TABLE patient_adherence_logs (
     log_id SERIAL PRIMARY KEY,
     no_rekam_medik VARCHAR(50) NOT NULL,
-    target_date VARCHAR(30) NOT NULL,
+    target_date VARCHAR(20) NOT NULL,
     logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     log_type VARCHAR(30) DEFAULT 'ON_TIME',
     delay_minutes INTEGER DEFAULT 0,
@@ -208,11 +215,11 @@ CREATE TABLE patient_adherence_logs (
 
 CREATE INDEX idx_adherence_rm_date ON patient_adherence_logs(no_rekam_medik, target_date);
 
--- 9. Tabel Katalog Kuesioner Riset Resmi KEPK
+-- 10. Tabel Katalog Kuesioner Riset Resmi KEPK
 CREATE TABLE patient_research_surveys (
-    survey_id VARCHAR(100) PRIMARY KEY,
+    survey_id VARCHAR(50) PRIMARY KEY,
     judul_penelitian TEXT NOT NULL,
-    no_etik_kepk VARCHAR(150),
+    no_etik_kepk VARCHAR(100),
     nama_peneliti VARCHAR(150),
     kriteria_inklusi TEXT DEFAULT '{}',
     reward_amount INTEGER DEFAULT 50000,
@@ -223,17 +230,17 @@ CREATE TABLE patient_research_surveys (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. Tabel Respon Kuesioner & Persetujuan Digital KEPK
+-- 11. Tabel Respon Kuesioner & Persetujuan Digital KEPK
 CREATE TABLE patient_survey_responses (
-    response_id VARCHAR(100) PRIMARY KEY,
-    survey_id VARCHAR(100) NOT NULL REFERENCES patient_research_surveys(survey_id) ON DELETE CASCADE,
+    response_id VARCHAR(50) PRIMARY KEY,
+    survey_id VARCHAR(50) NOT NULL REFERENCES patient_research_surveys(survey_id) ON DELETE CASCADE,
     no_rekam_medik VARCHAR(50) NOT NULL,
     answers_json TEXT NOT NULL,
     consent_signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     consent_device_hash VARCHAR(255),
-    payment_channel VARCHAR(50),
-    payment_account_no VARCHAR(100),
-    payment_account_name VARCHAR(150),
+    payment_channel VARCHAR(30),
+    payment_account_no VARCHAR(50),
+    payment_account_name VARCHAR(100),
     status_verifikasi VARCHAR(30) DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -241,24 +248,24 @@ CREATE TABLE patient_survey_responses (
 CREATE INDEX idx_survey_resp_rm ON patient_survey_responses(no_rekam_medik);
 CREATE INDEX idx_survey_resp_stat ON patient_survey_responses(status_verifikasi);
 
--- 11. Tabel Audit Pembayaran Imbalan Manual Peneliti
+-- 12. Tabel Audit Pembayaran Imbalan Manual Peneliti
 CREATE TABLE patient_research_payouts (
-    payout_id VARCHAR(100) PRIMARY KEY,
-    response_id VARCHAR(100) NOT NULL REFERENCES patient_survey_responses(response_id) ON DELETE CASCADE,
+    payout_id VARCHAR(50) PRIMARY KEY,
+    response_id VARCHAR(50) NOT NULL REFERENCES patient_survey_responses(response_id) ON DELETE CASCADE,
     no_rekam_medik VARCHAR(50) NOT NULL,
     amount_paid INTEGER NOT NULL,
-    bank_reference_no VARCHAR(150),
+    bank_reference_no VARCHAR(100),
     transferred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    verified_by_admin VARCHAR(150),
+    verified_by_admin VARCHAR(100),
     notes TEXT
 );
 
--- 12. Tabel Artikel Edukasi Gizi & Kepatuhan ARV
+-- 13. Tabel Artikel Edukasi Gizi & Kepatuhan ARV
 CREATE TABLE patient_articles (
-    article_id VARCHAR(100) PRIMARY KEY,
+    article_id VARCHAR(50) PRIMARY KEY,
     title TEXT NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    author_name VARCHAR(150) DEFAULT 'Tim Medis RSUP Dr. Kariadi',
+    category VARCHAR(50) NOT NULL,
+    author_name VARCHAR(100) DEFAULT 'Tim Medis RSUP Dr. Kariadi',
     thumbnail_url TEXT,
     content_markdown TEXT NOT NULL,
     read_time_minutes INTEGER DEFAULT 3,
@@ -266,9 +273,9 @@ CREATE TABLE patient_articles (
     published_at VARCHAR(50)
 );
 
--- 13. Tabel Banner Native In-Feed
+-- 14. Tabel Banner Native In-Feed
 CREATE TABLE app_native_banners (
-    banner_id VARCHAR(100) PRIMARY KEY,
+    banner_id VARCHAR(50) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     subtitle VARCHAR(255),
     badge_label VARCHAR(100) DEFAULT 'INFO RESMI',
@@ -280,7 +287,7 @@ CREATE TABLE app_native_banners (
 );
 
 -- ============================================================================
--- SEED DATA AWAL
+-- SEED DATA AWAL: KUESIONER KEPK, ARTIKEL EDUKASI, DAN BANNER NATIVE
 -- ============================================================================
 
 INSERT INTO patient_research_surveys (survey_id, judul_penelitian, no_etik_kepk, nama_peneliti, reward_amount, kuota_maksimal, informed_consent_text, questions_schema, is_active)
