@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db, init_db, Pasien, Kunjungan, LabViralLoad, LabCD4, UploadHistory, BASE_DIR
 from backend.importer import process_file_upload, auto_seed_local_files
 from backend.simrs_importer import auto_seed_simrs_arv
-from backend.analytics import get_executive_metrics, get_research_cohort_data, get_pediatric_dashboard_data, get_simrs_audit_data
+from backend.analytics import get_executive_metrics, get_research_cohort_data, get_pediatric_dashboard_data, get_simrs_audit_data, invalidate_cohort_cache
 from backend.export_service import generate_research_excel, generate_research_csv, generate_pediatric_excel
 
 app = FastAPI(
@@ -131,6 +131,7 @@ async def upload_file(
     try:
         contents = await file.read()
         res = process_file_upload(io.BytesIO(contents), file.filename, forced_type=file_type)
+        invalidate_cohort_cache()
         return res
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -147,7 +148,7 @@ def get_executive_dashboard(
 @app.post("/api/dashboard/research")
 def get_research_dashboard(payload: ResearchFilterRequest, db: Session = Depends(get_db)):
     filters = payload.dict()
-    result = get_research_cohort_data(db, filters)
+    result = get_research_cohort_data(db, filters, is_export=False)
     return result
 
 @app.get("/api/dashboard/pediatric")
@@ -188,7 +189,7 @@ def export_pediatric_data(
 @app.post("/api/export")
 def export_research_data(payload: ExportRequest, db: Session = Depends(get_db)):
     filters = payload.filters.dict()
-    result = get_research_cohort_data(db, filters)
+    result = get_research_cohort_data(db, filters, is_export=True)
     records = result["records"]
 
     if payload.format.lower() == "csv":

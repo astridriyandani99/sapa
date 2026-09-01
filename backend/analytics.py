@@ -354,48 +354,78 @@ def get_executive_metrics(db: Session, date_start: str = None, date_end: str = N
         "ref_date": ref_date_str
     }
 
+import time
 
-def get_research_cohort_data(db: Session, filters: dict):
+_COHORT_RAW_CACHE = {
+    "timestamp": 0,
+    "pasien_list": None,
+    "kunjs_by_pid": None,
+    "latest_kunj_overall": None,
+    "latest_vl": None,
+    "latest_cd4": None
+}
+
+def invalidate_cohort_cache():
+    global _COHORT_RAW_CACHE
+    _COHORT_RAW_CACHE["timestamp"] = 0
+    _COHORT_RAW_CACHE["pasien_list"] = None
+
+def get_research_cohort_data(db: Session, filters: dict, is_export: bool = False):
     """
     Mengambil data terintegrasi (Master Pasien + Kunjungan + Lab VL/CD4)
-    dengan multi-filtering fleksibel dan pencarian visit dinamis sesuai periode filter.
+    dengan multi-filtering fleksibel dan in-memory caching ultra-cepat.
     """
+    global _COHORT_RAW_CACHE
+
     date_kunj_start = filters.get("date_kunj_start")
     date_kunj_end = filters.get("date_kunj_end")
     has_date_filter = bool(date_kunj_start or date_kunj_end)
 
-    # 1. Ambil data kunjungan terbaru per pasien & kelompokkan semua kunjungan per pasien
-    all_kunj = db.query(Kunjungan).order_by(desc(Kunjungan.tanggal_kunjungan)).all()
-    from collections import defaultdict
-    kunjs_by_pid = defaultdict(list)
-    latest_kunj_overall = {}
-    for k in all_kunj:
-        if k.pasien_id:
-            kunjs_by_pid[k.pasien_id].append(k)
-            if k.pasien_id not in latest_kunj_overall:
-                latest_kunj_overall[k.pasien_id] = k
+    # 1. Cek / Muat Cache Master Database
+    now_ts = time.time()
+    if (now_ts - _COHORT_RAW_CACHE["timestamp"] < 60) and (_COHORT_RAW_CACHE["pasien_list"] is not None):
+        pasien_list = _COHORT_RAW_CACHE["pasien_list"]
+        kunjs_by_pid = _COHORT_RAW_CACHE["kunjs_by_pid"]
+        latest_kunj_overall = _COHORT_RAW_CACHE["latest_kunj_overall"]
+        latest_vl = _COHORT_RAW_CACHE["latest_vl"]
+        latest_cd4 = _COHORT_RAW_CACHE["latest_cd4"]
+    else:
+        all_kunj = db.query(Kunjungan).order_by(desc(Kunjungan.tanggal_kunjungan)).all()
+        from collections import defaultdict
+        kunjs_by_pid = defaultdict(list)
+        latest_kunj_overall = {}
+        for k in all_kunj:
+            if k.pasien_id:
+                kunjs_by_pid[k.pasien_id].append(k)
+                if k.pasien_id not in latest_kunj_overall:
+                    latest_kunj_overall[k.pasien_id] = k
 
-    # 2. Ambil data VL terbaru per pasien
-    all_vl = db.query(LabViralLoad).order_by(desc(LabViralLoad.tanggal_pemeriksaan)).all()
-    latest_vl = {}
-    for v in all_vl:
-        if v.pasien_id not in latest_vl:
-            latest_vl[v.pasien_id] = v
+        all_vl = db.query(LabViralLoad).order_by(desc(LabViralLoad.tanggal_pemeriksaan)).all()
+        latest_vl = {}
+        for v in all_vl:
+            if v.pasien_id not in latest_vl:
+                latest_vl[v.pasien_id] = v
 
-    # 2b. Ambil data CD4 terbaru per pasien
-    all_cd4 = db.query(LabCD4).order_by(desc(LabCD4.tanggal_pemeriksaan)).all()
-    latest_cd4 = {}
-    for c in all_cd4:
-        if c.pasien_id not in latest_cd4:
-            latest_cd4[c.pasien_id] = c
+        all_cd4 = db.query(LabCD4).order_by(desc(LabCD4.tanggal_pemeriksaan)).all()
+        latest_cd4 = {}
+        for c in all_cd4:
+            if c.pasien_id not in latest_cd4:
+                latest_cd4[c.pasien_id] = c
 
-    # 3. Query Pasien Master
-    pasien_list = db.query(Pasien).all()
+        pasien_list = db.query(Pasien).all()
 
-    # Gabungkan menjadi unified flat records
+        _COHORT_RAW_CACHE["timestamp"] = now_ts
+        _COHORT_RAW_CACHE["pasien_list"] = pasien_list
+        _COHORT_RAW_CACHE["kunjs_by_pid"] = kunjs_by_pid
+        _COHORT_RAW_CACHE["latest_kunj_overall"] = latest_kunj_overall
+        _COHORT_RAW_CACHE["latest_vl"] = latest_vl
+        _COHORT_RAW_CACHE["latest_cd4"] = latest_cd4
+
+    # 2. Gabungkan menjadi unified flat records
     unified = []
     for p in pasien_list:
-        # Tentukan kunjungan yang relevan untuk pasien ini
+        v = latest_vl.get(p.pasien_id)
+        c = latest_cd4.get(p.pasien_id)
         k = None
         if has_date_filter:
             p_kunjs = kunjs_by_pid.get(p.pasien_id, [])
@@ -411,10 +441,8 @@ def get_research_cohort_data(db: Session, filters: dict):
                 valid_kunjs.append(k_item)
             
             if valid_kunjs:
-                # Ambil kunjungan terbaru dalam rentang tanggal tersebut
                 k = valid_kunjs[0]
             else:
-                # Cek apakah kunjungan_terakhir atau tanggal_register pasien masuk dalam rentang tanggal
                 p_kunj_terakhir = p.kunjungan_terakhir
                 p_reg = p.tanggal_register
                 in_range_kunj = (p_kunj_terakhir and (not date_kunj_start or p_kunj_terakhir >= date_kunj_start) and (not date_kunj_end or p_kunj_terakhir <= date_kunj_end))
@@ -423,7 +451,6 @@ def get_research_cohort_data(db: Session, filters: dict):
                 if in_range_kunj or in_range_reg:
                     k = latest_kunj_overall.get(p.pasien_id)
                 else:
-                    # Pasien tidak memiliki aktivitas kunjungan atau registrasi pada rentang tanggal ini
                     continue
         else:
             k = latest_kunj_overall.get(p.pasien_id)
@@ -909,6 +936,8 @@ def get_research_cohort_data(db: Session, filters: dict):
             if src and src != "-":
                 referral_sources[src] = referral_sources.get(src, 0) + 1
 
+    top_referral_sources = [{"facility": f, "count": c} for f, c in sorted(referral_sources.items(), key=lambda x: x[1], reverse=True)[:10]]
+
     summary = {
         "total_matched": total_matched,
         "avg_age": avg_age,
@@ -945,7 +974,7 @@ def get_research_cohort_data(db: Session, filters: dict):
             "status_pdp": all_status_pdp,
             "kelompok_umur_klinis": all_kel_umur
         },
-        "records": filtered
+        "records": filtered if is_export else filtered[:100]
     }
 
 
