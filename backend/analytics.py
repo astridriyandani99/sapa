@@ -357,19 +357,23 @@ def get_executive_metrics(db: Session, date_start: str = None, date_end: str = N
 
 def get_research_cohort_data(db: Session, filters: dict):
     """
-    Mengambil data terintegrasi (Master Pasien + Kunjungan Terakhir + Lab VL Terakhir)
-    dengan multi-filtering fleksibel.
+    Mengambil data terintegrasi (Master Pasien + Kunjungan + Lab VL/CD4)
+    dengan multi-filtering fleksibel dan pencarian visit dinamis sesuai periode filter.
     """
-    # 1. Ambil data kunjungan terbaru per pasien
+    date_kunj_start = filters.get("date_kunj_start")
+    date_kunj_end = filters.get("date_kunj_end")
+    has_date_filter = bool(date_kunj_start or date_kunj_end)
+
+    # 1. Ambil data kunjungan terbaru per pasien & kelompokkan semua kunjungan per pasien
     all_kunj = db.query(Kunjungan).order_by(desc(Kunjungan.tanggal_kunjungan)).all()
-    latest_kunj = {}
     from collections import defaultdict
     kunjs_by_pid = defaultdict(list)
+    latest_kunj_overall = {}
     for k in all_kunj:
         if k.pasien_id:
             kunjs_by_pid[k.pasien_id].append(k)
-        if k.pasien_id not in latest_kunj:
-            latest_kunj[k.pasien_id] = k
+            if k.pasien_id not in latest_kunj_overall:
+                latest_kunj_overall[k.pasien_id] = k
 
     # 2. Ambil data VL terbaru per pasien
     all_vl = db.query(LabViralLoad).order_by(desc(LabViralLoad.tanggal_pemeriksaan)).all()
@@ -391,9 +395,38 @@ def get_research_cohort_data(db: Session, filters: dict):
     # Gabungkan menjadi unified flat records
     unified = []
     for p in pasien_list:
-        k = latest_kunj.get(p.pasien_id)
-        v = latest_vl.get(p.pasien_id)
-        c = latest_cd4.get(p.pasien_id)
+        # Tentukan kunjungan yang relevan untuk pasien ini
+        k = None
+        if has_date_filter:
+            p_kunjs = kunjs_by_pid.get(p.pasien_id, [])
+            valid_kunjs = []
+            for k_item in p_kunjs:
+                tgl = k_item.tanggal_kunjungan
+                if not tgl:
+                    continue
+                if date_kunj_start and tgl < date_kunj_start:
+                    continue
+                if date_kunj_end and tgl > date_kunj_end:
+                    continue
+                valid_kunjs.append(k_item)
+            
+            if valid_kunjs:
+                # Ambil kunjungan terbaru dalam rentang tanggal tersebut
+                k = valid_kunjs[0]
+            else:
+                # Cek apakah kunjungan_terakhir atau tanggal_register pasien masuk dalam rentang tanggal
+                p_kunj_terakhir = p.kunjungan_terakhir
+                p_reg = p.tanggal_register
+                in_range_kunj = (p_kunj_terakhir and (not date_kunj_start or p_kunj_terakhir >= date_kunj_start) and (not date_kunj_end or p_kunj_terakhir <= date_kunj_end))
+                in_range_reg = (p_reg and (not date_kunj_start or p_reg >= date_kunj_start) and (not date_kunj_end or p_reg <= date_kunj_end))
+                
+                if in_range_kunj or in_range_reg:
+                    k = latest_kunj_overall.get(p.pasien_id)
+                else:
+                    # Pasien tidak memiliki aktivitas kunjungan atau registrasi pada rentang tanggal ini
+                    continue
+        else:
+            k = latest_kunj_overall.get(p.pasien_id)
 
         # Evaluasi Status Retensi PDP Klinis
         if p.tanggal_meninggal:
@@ -737,12 +770,6 @@ def get_research_cohort_data(db: Session, filters: dict):
         if age_min is not None and r["umur"] is not None and r["umur"] < age_min:
             continue
         if age_max is not None and r["umur"] is not None and r["umur"] > age_max:
-            continue
-
-        # Visit Date Range
-        if date_kunj_start and r["tanggal_kunjungan"] and r["tanggal_kunjungan"] < date_kunj_start:
-            continue
-        if date_kunj_end and r["tanggal_kunjungan"] and r["tanggal_kunjungan"] > date_kunj_end:
             continue
 
         filtered.append(r)
